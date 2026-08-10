@@ -1,4 +1,12 @@
-import type { CreateGameRequest, ErrorResponse, Game, UpdateGameRequest, User } from "../shared/types";
+import type {
+  CreateGameRequest,
+  ErrorResponse,
+  Game,
+  GameDetail,
+  GamePhoto,
+  UpdateGameRequest,
+  User,
+} from "../shared/types";
 
 export async function fetchMe(): Promise<User | null> {
   const res = await fetch("/api/me", { credentials: "include" });
@@ -31,7 +39,7 @@ export async function listGames(): Promise<Game[]> {
   return res.json();
 }
 
-export async function getGame(id: string): Promise<Game | null> {
+export async function getGame(id: string): Promise<GameDetail | null> {
   const res = await fetch(`/api/games/${id}`, { credentials: "include" });
   if (res.status === 404) {
     return null;
@@ -70,6 +78,27 @@ export async function updateGame(id: string, body: UpdateGameRequest): Promise<G
 
 export async function deleteGame(id: string): Promise<void> {
   const res = await fetch(`/api/games/${id}`, { method: "DELETE", credentials: "include" });
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+}
+
+export async function uploadGamePhoto(gameId: string, blob: Blob): Promise<GamePhoto> {
+  const form = new FormData();
+  form.set("photo", blob, "photo.jpg");
+  const res = await fetch(`/api/games/${gameId}/photos`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+  return res.json();
+}
+
+export async function deletePhoto(photoId: string): Promise<void> {
+  const res = await fetch(`/api/photos/${photoId}`, { method: "DELETE", credentials: "include" });
   if (!res.ok) {
     throw new Error(await readErrorMessage(res));
   }
