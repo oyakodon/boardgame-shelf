@@ -1,0 +1,95 @@
+# データモデル
+
+D1(SQLite互換)のテーブル定義。時刻はUNIXエポック秒のINTEGERで統一する。
+
+マイグレーションは `wrangler d1 migrations create DB <name>` で作成し、`migrations/NNNN_<name>.sql` に置く。
+初回は `migrations/0001_init.sql` に以下の全テーブルをまとめる。
+
+```sql
+-- ユーザー。id は Discord のユーザー ID
+CREATE TABLE users (
+  id            TEXT PRIMARY KEY,
+  username      TEXT NOT NULL,          -- Discord のユーザー名
+  display_name  TEXT NOT NULL,          -- 会での表示名。初期値は global_name
+  avatar_url    TEXT,
+  role          TEXT NOT NULL DEFAULT 'member',  -- 'member' | 'admin'
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  last_login_at INTEGER
+);
+
+-- セッション
+CREATE TABLE sessions (
+  id_hash    TEXT PRIMARY KEY,          -- セッション ID の SHA-256
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_sessions_user ON sessions(user_id);
+
+-- ゲーム
+CREATE TABLE games (
+  id            TEXT PRIMARY KEY,       -- UUID v4
+  owner_id      TEXT NOT NULL REFERENCES users(id),
+  title         TEXT NOT NULL,
+  title_reading TEXT,                   -- ひらがな。並べ替えと検索の補助
+  min_players   INTEGER,
+  max_players   INTEGER,
+  play_time_min INTEGER,                -- 分
+  play_time_max INTEGER,
+  min_age       INTEGER,
+  note          TEXT,                   -- 所有者のコメント。「重ゲー」「拡張入り」など
+  bgg_id        INTEGER,                -- 手入力の補助情報。任意
+  status        TEXT NOT NULL DEFAULT 'available',  -- 'available' | 'retired'
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  deleted_at    INTEGER                 -- 論理削除
+);
+CREATE INDEX idx_games_owner   ON games(owner_id);
+CREATE INDEX idx_games_players ON games(min_players, max_players);
+CREATE INDEX idx_games_active  ON games(deleted_at, created_at DESC);
+
+-- 写真
+CREATE TABLE game_photos (
+  id           TEXT PRIMARY KEY,
+  game_id      TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  r2_key       TEXT NOT NULL UNIQUE,    -- 例: games/{game_id}/{uuid}.jpg
+  content_type TEXT NOT NULL,
+  size_bytes   INTEGER NOT NULL,
+  width        INTEGER,
+  height       INTEGER,
+  sort_order   INTEGER NOT NULL DEFAULT 0,  -- 0 番目をサムネイルに使う
+  created_at   INTEGER NOT NULL
+);
+CREATE INDEX idx_photos_game ON game_photos(game_id, sort_order);
+
+-- タグ
+CREATE TABLE tags (
+  id         TEXT PRIMARY KEY,       -- UUID v4
+  name       TEXT NOT NULL UNIQUE,
+  created_at INTEGER NOT NULL
+);
+
+-- ゲームとタグの中間テーブル
+CREATE TABLE game_tags (
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  tag_id  TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (game_id, tag_id)
+);
+CREATE INDEX idx_game_tags_tag ON game_tags(tag_id);
+```
+
+## 設計判断
+
+**人数の絞り込み**：「N人で遊べる」は`min_players <= N AND max_players >= N`で判定する。
+人数が未入力のゲームは絞り込み結果から外れるため、登録フォームでは人数を必須入力にする(`.agents/architecture.md` の「フロントエンド」参照)。
+
+**削除**：`games`は`deleted_at`を立てる論理削除にする。誤操作からの復旧を管理者がSQLで行えるようにするためである。
+R2の実体は、論理削除から一定期間後にまとめて手動で消す運用でよい(自動化はしない)。
+
+**所有者の重複**：同じタイトルを複数人が持つ状況は普通に起きる。`games`は「誰の持ち物か」を単位とする表なので、タイトルの重複を制約で禁止しない。
+一覧では同一タイトルをまとめず、所有者名を添えて並べる。
+
+**セッション**：`sessions.id_hash`にはCookieに入れる値そのものではなく、そのSHA-256ハッシュを保存する。DBが読まれてもセッションを復元できないようにするためである。詳細は`.agents/auth.md`。
+
+**タグ**：`tags`は候補リストを持たず、メンバーが自由に作成する。`name`をUNIQUEにして表記の重複だけは防ぐが、表記揺れ(「重ゲー」「重量級」など)の統一は運用に委ねる。

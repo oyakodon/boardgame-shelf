@@ -1,0 +1,49 @@
+# API仕様
+
+型定義の正は `src/shared/types.ts` とする(実装時に作成)。ここでは概要のみ記す。
+すべて`/api`配下(認証系のみ`/auth`配下)に置き、JSONで受け答えする。
+
+## エンドポイント一覧
+
+| メソッドとパス | 用途 | 認証 |
+| --- | --- | --- |
+| `GET /auth/login` | Discord認可画面へリダイレクト | 不要 |
+| `GET /auth/callback` | OAuth2コールバック。セッション発行後トップへリダイレクト | 不要 |
+| `POST /auth/logout` | セッション破棄 | 要 |
+| `GET /api/health` | 死活監視用。`200 text/plain "ok"`固定 | 不要 |
+| `GET /api/me` | ログイン中のユーザー情報。未ログインなら401 | 要 |
+| `PATCH /api/me` | 表示名の変更 | 要 |
+| `GET /api/games` | ゲーム一覧。クエリ`q`, `players`, `owner_id`, `sort` | 要 |
+| `POST /api/games` | ゲーム登録 | 要 |
+| `GET /api/games/:id` | ゲーム詳細。写真の一覧を含む | 要 |
+| `PATCH /api/games/:id` | ゲーム更新。所有者本人かadminのみ | 要 |
+| `DELETE /api/games/:id` | ゲーム削除(論理削除)。所有者本人かadminのみ | 要 |
+| `POST /api/games/:id/photos` | 写真の追加 | 要 |
+| `DELETE /api/photos/:id` | 写真の削除 | 要 |
+| `GET /api/users` | メンバー一覧と各自の登録件数 | 要 |
+| `GET /api/tags` | タグ一覧 | 要 |
+| `POST /api/games/:id/tags` | ゲームへのタグ付与。未登録のタグ名なら新規作成する | 要 |
+| `DELETE /api/games/:id/tags/:tagId` | ゲームからタグを外す | 要 |
+
+`GET /api/games`はサムネイル1枚分のURLだけを含む軽い形で返す。最大でも1000件程度なので、ページングを入れず全件を返し、キーワードと人数の絞り込みはクライアント側で行う。往復が減って体感が速くなり、実装も減る。件数が増えて重くなったら`(created_at, id)`を鍵とするカーソルページングに切り替える。
+
+タグの付与と削除は、ゲーム本体の更新(`PATCH /api/games/:id`)と異なり所有者やadminに限らない。ログイン済みのメンバーなら誰でも任意のゲームにタグを付けたり外したりできる。
+
+## 写真アップロードの流れ
+
+1. ブラウザ側でCanvasを使い、長辺1600pxまで縮小してJPEGへ再符号化する
+2. `POST /api/games/:id/photos`へ送る。1枚2MBまで、1ゲーム5枚まで
+3. Workerが先頭バイトを見て画像形式を確認し、R2へ`put`する
+4. `game_photos`に行を追加する
+
+配信は`GET /img/{r2_key}`をWorkerが受け、R2から読んで返す。キーにはUUIDが入っていて内容が変わらないため、`Cache-Control: public, max-age=31536000, immutable`を付ける。R2バケットは直接公開せず、Worker経由に限定する。
+
+## エラー規約
+
+- 認証必須のエンドポイントでセッションが無効：`401 {"error": "..."}`
+- 所有者/admin以外による更新や削除：`403 {"error": "..."}`
+- 存在しないリソース：`404 {"error": "..."}`
+- 入力値の検証エラー(必須項目欠落、文字数超過、写真の枚数/サイズ超過など)：`400 {"error": "..."}`
+- その他(D1/R2起因の想定外エラー)：`500 {"error": "..."}`(個別のtry/catchで握りつぶさずそのまま返す方針)
+
+エラーレスポンスの形は`{ error: string }`に統一する。
