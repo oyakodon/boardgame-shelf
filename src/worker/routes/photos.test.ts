@@ -195,6 +195,30 @@ describe("DELETE /api/photos/:id", () => {
     expect(detail.photos).toHaveLength(0);
   });
 
+  it("does not reuse sort_order after deleting the first photo and re-uploading", async () => {
+    const { cookie } = await createUser("photo-owner-16");
+    const game = await createGameViaApi(cookie);
+    const first = (await (await uploadPhoto(game.id, cookie)).json()) as GamePhoto;
+    await uploadPhoto(game.id, cookie);
+    await uploadPhoto(game.id, cookie);
+
+    const deleteRes = await authedFetch(`/api/photos/${first.id}`, cookie, { method: "DELETE" });
+    expect(deleteRes.status).toBe(204);
+
+    const reuploaded = (await (await uploadPhoto(game.id, cookie)).json()) as GamePhoto;
+
+    const detailRes = await authedFetch(`/api/games/${game.id}`, cookie);
+    const detail = (await detailRes.json()) as GameDetail;
+    const sortOrders = detail.photos.map((p) => p.sortOrder);
+
+    expect(reuploaded.sortOrder).toBe(3);
+    expect(new Set(sortOrders).size).toBe(sortOrders.length);
+
+    const listRes = await authedFetch("/api/games", cookie);
+    const list = (await listRes.json()) as Game[];
+    expect(list.filter((g) => g.id === game.id)).toHaveLength(1);
+  });
+
   it("forbids a different member from deleting someone else's photo", async () => {
     const { cookie: ownerCookie } = await createUser("photo-owner-12");
     const game = await createGameViaApi(ownerCookie);
