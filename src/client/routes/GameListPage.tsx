@@ -27,10 +27,21 @@ export function GameListPage() {
           <li key={game.id}>
             <Link
               to={`/games/${game.id}`}
-              className="block rounded-lg border border-gray-200 bg-white p-3 active:border-indigo-400"
+              className="block overflow-hidden rounded-lg border border-gray-200 bg-white active:border-indigo-400"
             >
-              <p className="truncate font-semibold text-gray-900">{game.title}</p>
-              <p className="text-sm text-gray-600">{playersLabel(game)}</p>
+              <div className="aspect-square w-full bg-gray-100">
+                {game.thumbnailUrl ? (
+                  <img src={game.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-gray-300">
+                    <span className="text-3xl">🎲</span>
+                  </div>
+                )}
+              </div>
+              <div className="p-3">
+                <p className="truncate font-semibold text-gray-900">{game.title}</p>
+                <p className="text-sm text-gray-600">{playersLabel(game)}</p>
+              </div>
             </Link>
           </li>
         ))}

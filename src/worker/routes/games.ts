@@ -1,10 +1,10 @@
 import type { Context } from "hono";
 import type { CreateGameRequest, GameStatus, UpdateGameRequest } from "../../shared/types";
 import type { Variables } from "../auth/middleware";
-import { getGameById, insertGame, listActiveGames, softDeleteGame, updateGame } from "../db";
+import { getGameById, insertGame, listActiveGames, listPhotosByGameId, softDeleteGame, updateGame } from "../db";
 import type { Bindings } from "../env";
 
-type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>;
+export type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -117,7 +117,7 @@ export async function createGame(c: AppContext) {
   return c.json(game, 201);
 }
 
-async function findGameOrNull(c: AppContext) {
+export async function findGameOrNull(c: AppContext) {
   const id = c.req.param("id");
   return id ? getGameById(c.env.DB, id) : null;
 }
@@ -127,7 +127,8 @@ export async function getGame(c: AppContext) {
   if (!game) {
     return c.json({ error: "not found" }, 404);
   }
-  return c.json(game);
+  const photos = await listPhotosByGameId(c.env.DB, game.id);
+  return c.json({ ...game, photos });
 }
 
 export async function patchGame(c: AppContext) {

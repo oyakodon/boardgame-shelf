@@ -25,8 +25,22 @@ export type Game = {
   note: string | null;
   bggId: number | null;
   status: GameStatus;
+  thumbnailUrl: string | null;
   createdAt: number;
   updatedAt: number;
+};
+
+export type GamePhoto = {
+  id: string;
+  url: string;
+  width: number | null;
+  height: number | null;
+  sortOrder: number;
+  createdAt: number;
+};
+
+export type GameDetail = Game & {
+  photos: GamePhoto[];
 };
 
 export type CreateGameRequest = {

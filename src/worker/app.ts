@@ -3,7 +3,9 @@ import { requireAuth, requireSameOrigin, type Variables } from "./auth/middlewar
 import { callback, login, logout } from "./auth/routes";
 import type { Bindings } from "./env";
 import { createGame, deleteGame, getGame, listGames, patchGame } from "./routes/games";
+import { serveImage } from "./routes/img";
 import { me } from "./routes/me";
+import { deletePhoto, uploadGamePhoto } from "./routes/photos";
 
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -26,7 +28,12 @@ app.get("/api/games/:id", requireAuth, getGame);
 app.patch("/api/games/:id", requireAuth, requireSameOrigin, patchGame);
 app.delete("/api/games/:id", requireAuth, requireSameOrigin, deleteGame);
 
+app.post("/api/games/:id/photos", requireAuth, requireSameOrigin, uploadGamePhoto);
+app.delete("/api/photos/:id", requireAuth, requireSameOrigin, deletePhoto);
+
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 app.all("/auth/*", (c) => c.json({ error: "not found" }, 404));
+
+app.get("/img/*", serveImage);
 
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));

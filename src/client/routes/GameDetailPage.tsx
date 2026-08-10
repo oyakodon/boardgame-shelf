@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { Game } from "../../shared/types";
-import { deleteGame, getGame } from "../api";
+import type { GameDetail } from "../../shared/types";
+import { deleteGame, deletePhoto, getGame, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
 import { playersLabel } from "../game-format";
+import { resizeImageToJpeg } from "../image-resize";
 
-function playTimeLabel(game: Game): string | null {
+const MAX_PHOTOS = 5;
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
+function playTimeLabel(game: GameDetail): string | null {
   if (game.playTimeMin === null && game.playTimeMax === null) {
     return null;
   }
@@ -19,8 +23,11 @@ export function GameDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [game, setGame] = useState<Game | null | undefined>(undefined);
+  const [game, setGame] = useState<GameDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!id) {
@@ -61,6 +68,57 @@ export function GameDetailPage() {
   const canEdit = user?.id === game.ownerId || user?.role === "admin";
   const time = playTimeLabel(game);
 
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !game) {
+      return;
+    }
+    if (game.photos.length >= MAX_PHOTOS) {
+      setPhotoError(`写真は${MAX_PHOTOS}枚まで登録できます。`);
+      return;
+    }
+
+    setPhotoError(null);
+    setUploading(true);
+    try {
+      const resized = await resizeImageToJpeg(file);
+      if (resized.size > MAX_PHOTO_BYTES) {
+        setPhotoError("画像サイズが大きすぎます。");
+        return;
+      }
+      const photo = await uploadGamePhoto(game.id, resized);
+      setGame((prev) =>
+        prev
+          ? {
+              ...prev,
+              photos: [...prev.photos, photo],
+              thumbnailUrl: prev.thumbnailUrl ?? photo.url,
+            }
+          : prev,
+      );
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "アップロードに失敗しました");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleDeletePhoto(photoId: string) {
+    if (!window.confirm("この写真を削除しますか？")) {
+      return;
+    }
+    deletePhoto(photoId)
+      .then(() => {
+        setGame((prev) => {
+          if (!prev) return prev;
+          const photos = prev.photos.filter((p) => p.id !== photoId);
+          return { ...prev, photos, thumbnailUrl: photos[0]?.url ?? null };
+        });
+      })
+      .catch((err: unknown) => setPhotoError(err instanceof Error ? err.message : "削除に失敗しました"));
+  }
+
   return (
     <main className="mx-auto max-w-2xl p-4">
       <Link to="/" className="text-sm text-indigo-600 hover:underline">
@@ -68,6 +126,44 @@ export function GameDetailPage() {
       </Link>
 
       <h1 className="mt-2 text-2xl font-bold text-gray-900">{game.title}</h1>
+
+      <div className="mt-3 flex gap-2 overflow-x-auto">
+        {game.photos.map((photo) => (
+          <div key={photo.id} className="relative shrink-0">
+            <img src={photo.url} alt="" className="h-32 w-32 rounded-lg border border-gray-200 object-cover" />
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => handleDeletePhoto(photo.id)}
+                aria-label="この写真を削除"
+                className="absolute top-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+        {canEdit && game.photos.length < MAX_PHOTOS && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex h-32 w-32 shrink-0 flex-col items-center justify-center rounded-lg border border-gray-300 border-dashed text-gray-500 active:bg-gray-50 disabled:opacity-50"
+          >
+            <span className="text-2xl">{uploading ? "…" : "+"}</span>
+            <span className="text-xs">{uploading ? "アップロード中" : "写真を追加"}</span>
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFileSelected}
+        />
+      </div>
+      {photoError && <p className="mt-1 text-sm text-red-600">{photoError}</p>}
 
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex gap-2">
