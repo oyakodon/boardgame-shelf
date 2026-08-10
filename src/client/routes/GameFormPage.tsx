@@ -84,12 +84,12 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       setError("タイトルを入力してください。");
       return;
     }
-    if (minPlayers === null || Number.isNaN(minPlayers)) {
-      setError("最小人数を入力してください。");
+    if (minPlayers === null || Number.isNaN(minPlayers) || minPlayers < 1) {
+      setError("最小人数は1以上の整数で入力してください。");
       return;
     }
-    if ([maxPlayers, playTimeMin, playTimeMax, bggId].some((n) => Number.isNaN(n))) {
-      setError("数値項目の入力内容を確認してください。");
+    if ([maxPlayers, playTimeMin, playTimeMax, bggId].some((n) => n !== null && (Number.isNaN(n) || n < 1))) {
+      setError("数値項目は1以上の整数で入力してください。");
       return;
     }
     if (maxPlayers !== null && minPlayers > maxPlayers) {
