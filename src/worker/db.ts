@@ -118,8 +118,9 @@ const GAME_COLUMNS_WITH_THUMBNAIL = `
 
 const THUMBNAIL_JOIN = `
   LEFT JOIN game_photos p
-    ON p.game_id = g.id
-    AND p.sort_order = (SELECT MIN(sort_order) FROM game_photos WHERE game_id = g.id)
+    ON p.id = (
+      SELECT id FROM game_photos WHERE game_id = g.id ORDER BY sort_order ASC, id ASC LIMIT 1
+    )
 `;
 
 export function imgUrl(r2Key: string | null): string | null {
@@ -282,26 +283,27 @@ export async function insertGamePhoto(
     r2Key: string;
     contentType: string;
     sizeBytes: number;
-    sortOrder: number;
   },
   now: number,
 ): Promise<GamePhoto> {
   await db
     .prepare(
       `INSERT INTO game_photos (id, game_id, r2_key, content_type, size_bytes, width, height, sort_order, created_at)
-       VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, NULL, NULL,
+         COALESCE((SELECT MAX(sort_order) FROM game_photos WHERE game_id = ?), -1) + 1,
+         ?)`,
     )
-    .bind(params.id, params.gameId, params.r2Key, params.contentType, params.sizeBytes, params.sortOrder, now)
+    .bind(params.id, params.gameId, params.r2Key, params.contentType, params.sizeBytes, params.gameId, now)
     .run();
 
-  return {
-    id: params.id,
-    url: imgUrl(params.r2Key) as string,
-    width: null,
-    height: null,
-    sortOrder: params.sortOrder,
-    createdAt: now,
-  };
+  const row = await db
+    .prepare(`SELECT ${GAME_PHOTO_COLUMNS} FROM game_photos WHERE id = ?`)
+    .bind(params.id)
+    .first<GamePhotoRow>();
+  if (!row) {
+    throw new Error(`insert succeeded but photo ${params.id} not found`);
+  }
+  return toGamePhoto(row);
 }
 
 export async function getPhotoWithGameOwner(

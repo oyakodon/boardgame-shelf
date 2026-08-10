@@ -54,7 +54,6 @@ export async function uploadGamePhoto(c: AppContext) {
       r2Key,
       contentType: "image/jpeg",
       sizeBytes: file.size,
-      sortOrder: count,
     },
     now,
   );
