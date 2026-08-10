@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boardgame-shelf",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-08-10",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "boardgame-shelf",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "boardgame-shelf-photos"
+    }
+  ],
+  "vars": {
+    "DISCORD_CLIENT_ID": "REPLACE_WITH_DISCORD_CLIENT_ID",
+    "DISCORD_GUILD_ID": "REPLACE_WITH_DISCORD_GUILD_ID",
+    "ADMIN_DISCORD_IDS": "REPLACE_WITH_COMMA_SEPARATED_DISCORD_USER_IDS"
+  }
+}
