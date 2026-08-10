@@ -24,11 +24,18 @@ describe("unauthenticated requests to protected routes", () => {
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: "unauthorized" });
   });
+
+  it("GET /api/games returns 401 json", async () => {
+    const res = await SELF.fetch("https://example.com/api/games");
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "unauthorized" });
+  });
 });
 
 describe("unimplemented /api and /auth routes", () => {
-  it("GET /api/games returns 404 json instead of falling back to assets", async () => {
-    const res = await SELF.fetch("https://example.com/api/games");
+  it("GET /api/nonexistent returns 404 json instead of falling back to assets", async () => {
+    const res = await SELF.fetch("https://example.com/api/nonexistent");
 
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "not found" });

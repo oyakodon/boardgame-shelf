@@ -24,12 +24,10 @@ CREATE TABLE games (
   id            TEXT PRIMARY KEY,       -- UUID v4
   owner_id      TEXT NOT NULL REFERENCES users(id),
   title         TEXT NOT NULL,
-  title_reading TEXT,                   -- ひらがな。並べ替えと検索の補助
   min_players   INTEGER,
   max_players   INTEGER,
   play_time_min INTEGER,                -- 分
   play_time_max INTEGER,
-  min_age       INTEGER,
   note          TEXT,                   -- 所有者のコメント。「重ゲー」「拡張入り」など
   bgg_id        INTEGER,                -- 手入力の補助情報。任意
   status        TEXT NOT NULL DEFAULT 'available',  -- 'available' | 'retired'
