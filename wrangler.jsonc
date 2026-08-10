@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "boardgame-shelf",
   "main": "src/worker/index.ts",
-  "compatibility_date": "2026-08-10",
+  "compatibility_date": "2026-08-08",
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
