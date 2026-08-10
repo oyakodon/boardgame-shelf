@@ -1,4 +1,4 @@
-import type { CreateGameRequest, Game, Role, UpdateGameRequest, User } from "../shared/types";
+import type { CreateGameRequest, Game, GamePhoto, Role, UpdateGameRequest, User } from "../shared/types";
 
 type UserRow = {
   id: string;
@@ -108,10 +108,23 @@ type GameRow = {
   status: Game["status"];
   created_at: number;
   updated_at: number;
+  thumbnail_key: string | null;
 };
 
-const GAME_COLUMNS =
-  "id, owner_id, title, min_players, max_players, play_time_min, play_time_max, note, bgg_id, status, created_at, updated_at";
+const GAME_COLUMNS_WITH_THUMBNAIL = `
+  g.id, g.owner_id, g.title, g.min_players, g.max_players, g.play_time_min, g.play_time_max,
+  g.note, g.bgg_id, g.status, g.created_at, g.updated_at, p.r2_key AS thumbnail_key
+`;
+
+const THUMBNAIL_JOIN = `
+  LEFT JOIN game_photos p
+    ON p.game_id = g.id
+    AND p.sort_order = (SELECT MIN(sort_order) FROM game_photos WHERE game_id = g.id)
+`;
+
+export function imgUrl(r2Key: string | null): string | null {
+  return r2Key ? `/img/${r2Key}` : null;
+}
 
 function toGame(row: GameRow): Game {
   return {
@@ -125,6 +138,7 @@ function toGame(row: GameRow): Game {
     note: row.note,
     bggId: row.bgg_id,
     status: row.status,
+    thumbnailUrl: imgUrl(row.thumbnail_key),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -165,14 +179,20 @@ export async function insertGame(
 
 export async function listActiveGames(db: D1Database): Promise<Game[]> {
   const { results } = await db
-    .prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE deleted_at IS NULL ORDER BY created_at DESC`)
+    .prepare(
+      `SELECT ${GAME_COLUMNS_WITH_THUMBNAIL} FROM games g ${THUMBNAIL_JOIN}
+       WHERE g.deleted_at IS NULL ORDER BY g.created_at DESC`,
+    )
     .all<GameRow>();
   return results.map(toGame);
 }
 
 export async function getGameById(db: D1Database, id: string): Promise<Game | null> {
   const row = await db
-    .prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE id = ? AND deleted_at IS NULL`)
+    .prepare(
+      `SELECT ${GAME_COLUMNS_WITH_THUMBNAIL} FROM games g ${THUMBNAIL_JOIN}
+       WHERE g.id = ? AND g.deleted_at IS NULL`,
+    )
     .bind(id)
     .first<GameRow>();
   return row ? toGame(row) : null;
@@ -214,4 +234,92 @@ export async function softDeleteGame(db: D1Database, id: string, now: number): P
     .prepare("UPDATE games SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
     .bind(now, now, id)
     .run();
+}
+
+type GamePhotoRow = {
+  id: string;
+  r2_key: string;
+  width: number | null;
+  height: number | null;
+  sort_order: number;
+  created_at: number;
+};
+
+const GAME_PHOTO_COLUMNS = "id, r2_key, width, height, sort_order, created_at";
+
+function toGamePhoto(row: GamePhotoRow): GamePhoto {
+  return {
+    id: row.id,
+    url: imgUrl(row.r2_key) as string,
+    width: row.width,
+    height: row.height,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+  };
+}
+
+export async function countPhotosByGameId(db: D1Database, gameId: string): Promise<number> {
+  const row = await db
+    .prepare("SELECT COUNT(*) AS n FROM game_photos WHERE game_id = ?")
+    .bind(gameId)
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+export async function listPhotosByGameId(db: D1Database, gameId: string): Promise<GamePhoto[]> {
+  const { results } = await db
+    .prepare(`SELECT ${GAME_PHOTO_COLUMNS} FROM game_photos WHERE game_id = ? ORDER BY sort_order ASC`)
+    .bind(gameId)
+    .all<GamePhotoRow>();
+  return results.map(toGamePhoto);
+}
+
+export async function insertGamePhoto(
+  db: D1Database,
+  params: {
+    id: string;
+    gameId: string;
+    r2Key: string;
+    contentType: string;
+    sizeBytes: number;
+    sortOrder: number;
+  },
+  now: number,
+): Promise<GamePhoto> {
+  await db
+    .prepare(
+      `INSERT INTO game_photos (id, game_id, r2_key, content_type, size_bytes, width, height, sort_order, created_at)
+       VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+    )
+    .bind(params.id, params.gameId, params.r2Key, params.contentType, params.sizeBytes, params.sortOrder, now)
+    .run();
+
+  return {
+    id: params.id,
+    url: imgUrl(params.r2Key) as string,
+    width: null,
+    height: null,
+    sortOrder: params.sortOrder,
+    createdAt: now,
+  };
+}
+
+export async function getPhotoWithGameOwner(
+  db: D1Database,
+  photoId: string,
+): Promise<{ id: string; r2Key: string; gameId: string; gameOwnerId: string } | null> {
+  const row = await db
+    .prepare(
+      `SELECT p.id AS id, p.r2_key AS r2_key, p.game_id AS game_id, g.owner_id AS game_owner_id
+       FROM game_photos p
+       JOIN games g ON g.id = p.game_id
+       WHERE p.id = ?`,
+    )
+    .bind(photoId)
+    .first<{ id: string; r2_key: string; game_id: string; game_owner_id: string }>();
+  return row ? { id: row.id, r2Key: row.r2_key, gameId: row.game_id, gameOwnerId: row.game_owner_id } : null;
+}
+
+export async function deletePhotoById(db: D1Database, photoId: string): Promise<void> {
+  await db.prepare("DELETE FROM game_photos WHERE id = ?").bind(photoId).run();
 }
