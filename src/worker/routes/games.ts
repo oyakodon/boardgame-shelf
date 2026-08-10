@@ -147,6 +147,12 @@ export async function patchGame(c: AppContext) {
     return c.json({ error: "invalid request body" }, 400);
   }
 
+  const effectiveMinPlayers = parsed.minPlayers ?? game.minPlayers;
+  const effectiveMaxPlayers = "maxPlayers" in parsed ? parsed.maxPlayers : game.maxPlayers;
+  if (typeof effectiveMaxPlayers === "number" && effectiveMinPlayers > effectiveMaxPlayers) {
+    return c.json({ error: "invalid request body" }, 400);
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const updated = await updateGame(c.env.DB, game.id, parsed, now);
   return c.json(updated);

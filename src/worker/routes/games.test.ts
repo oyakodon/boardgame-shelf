@@ -175,6 +175,30 @@ describe("PATCH /api/games/:id", () => {
     expect(((await patchRes.json()) as Game).note).toBe("拡張入り");
   });
 
+  it("returns 400 when updating only maxPlayers creates minPlayers > maxPlayers against the existing value", async () => {
+    const { cookie } = await createUser("owner-7b");
+    const game = await createGameViaApi(cookie, { title: "人数チェック用", minPlayers: 3, maxPlayers: 5 });
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ maxPlayers: 2 }),
+    });
+
+    expect(patchRes.status).toBe(400);
+  });
+
+  it("returns 400 when updating only minPlayers creates minPlayers > maxPlayers against the existing value", async () => {
+    const { cookie } = await createUser("owner-7c");
+    const game = await createGameViaApi(cookie, { title: "人数チェック用2", minPlayers: 2, maxPlayers: 4 });
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ minPlayers: 10 }),
+    });
+
+    expect(patchRes.status).toBe(400);
+  });
+
   it("forbids a different member from updating someone else's game", async () => {
     const { cookie: ownerCookie } = await createUser("owner-8");
     const game = await createGameViaApi(ownerCookie);
