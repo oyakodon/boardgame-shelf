@@ -16,5 +16,5 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["src/worker", "src/shared"]
+  "include": ["src/worker", "src/shared", "vitest.config.ts"]
 }
