@@ -58,10 +58,12 @@ async function authenticateWithSession(c: AuthContext, next: Next) {
   return next();
 }
 
+const MUTATING_METHODS = new Set(["POST", "PATCH", "DELETE"]);
+
 // 更新系(POST/PATCH/DELETE)でOriginヘッダの一致を要求する。
 // Bearerトークン認証はCookieを使わずCSRFの対象にならないため対象外(.agents/auth.md参照)。
 export function requireSameOrigin(c: AuthContext, next: Next) {
-  if (c.get("authMethod") === "adminToken") {
+  if (!MUTATING_METHODS.has(c.req.method) || c.get("authMethod") === "adminToken") {
     return next();
   }
   const origin = c.req.header("Origin");
