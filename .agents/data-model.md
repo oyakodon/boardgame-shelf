@@ -10,7 +10,7 @@ D1(SQLite互換)のテーブル定義。時刻はUNIXエポック秒のINTEGER�
 CREATE TABLE users (
   id            TEXT PRIMARY KEY,
   username      TEXT NOT NULL,          -- Discord のユーザー名
-  display_name  TEXT NOT NULL,          -- 会での表示名。初期値は global_name
+  display_name  TEXT NOT NULL,          -- Discordの表示名(global_name)。ログインのたびに最新の値で上書きする
   avatar_url    TEXT,
   role          TEXT NOT NULL DEFAULT 'member',  -- 'member' | 'admin'
   created_at    INTEGER NOT NULL,

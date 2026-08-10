@@ -26,8 +26,8 @@ export async function getUserById(db: D1Database, id: string): Promise<User | nu
   return row ? toUser(row) : null;
 }
 
-// display_nameとroleは初回作成時のみ設定し、以後のログインでは上書きしない
-// (display_nameはユーザーが変更できる、roleは管理者がD1を直接操作して昇格/降格するため)
+// roleは初回作成時のみ設定し、以後のログインでは上書きしない
+// (管理者がD1を直接操作して昇格/降格するため)。display_nameはDiscord側の変更を反映するため毎回上書きする
 export async function upsertUserFromDiscordLogin(
   db: D1Database,
   params: {
@@ -45,6 +45,7 @@ export async function upsertUserFromDiscordLogin(
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          username = excluded.username,
+         display_name = excluded.display_name,
          avatar_url = excluded.avatar_url,
          updated_at = excluded.updated_at,
          last_login_at = excluded.last_login_at`,
