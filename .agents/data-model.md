@@ -32,12 +32,10 @@ CREATE TABLE games (
   id            TEXT PRIMARY KEY,       -- UUID v4
   owner_id      TEXT NOT NULL REFERENCES users(id),
   title         TEXT NOT NULL,
-  title_reading TEXT,                   -- ひらがな。並べ替えと検索の補助
   min_players   INTEGER,
   max_players   INTEGER,
   play_time_min INTEGER,                -- 分
   play_time_max INTEGER,
-  min_age       INTEGER,
   note          TEXT,                   -- 所有者のコメント。「重ゲー」「拡張入り」など
   bgg_id        INTEGER,                -- 手入力の補助情報。任意
   status        TEXT NOT NULL DEFAULT 'available',  -- 'available' | 'retired'
@@ -81,8 +79,8 @@ CREATE INDEX idx_game_tags_tag ON game_tags(tag_id);
 
 ## 設計判断
 
-**人数の絞り込み**：「N人で遊べる」は`min_players <= N AND max_players >= N`で判定する。
-人数が未入力のゲームは絞り込み結果から外れるため、登録フォームでは人数を必須入力にする(`.agents/architecture.md` の「フロントエンド」参照)。
+**人数の絞り込み**：「N人で遊べる」は`min_players <= N AND (max_players IS NULL OR max_players >= N)`で判定する。
+`max_players`が`NULL`は「上限なし(最小人数以上なら何人でも可)」を表す。`min_players`は登録フォームで必須入力にするが、`max_players`は任意とする(`.agents/architecture.md` の「フロントエンド」参照)。
 
 **削除**：`games`は`deleted_at`を立てる論理削除にする。誤操作からの復旧を管理者がSQLで行えるようにするためである。
 R2の実体は、論理削除から一定期間後にまとめて手動で消す運用でよい(自動化はしない)。
