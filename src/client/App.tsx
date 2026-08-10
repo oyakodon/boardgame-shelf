@@ -40,7 +40,14 @@ export function App() {
       <p className="text-lg text-gray-600">ようこそ、{user.displayName}さん</p>
       <button
         type="button"
-        onClick={() => logout().then(() => window.location.reload())}
+        onClick={() => {
+          logout()
+            .then(() => window.location.reload())
+            .catch((error: unknown) => {
+              console.error(error);
+              window.alert("ログアウトに失敗しました。もう一度お試しください。");
+            });
+        }}
         className="rounded border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
       >
         ログアウト
