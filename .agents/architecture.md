@@ -1,0 +1,187 @@
+# アーキテクチャ
+
+## 概要
+
+boardgame-shelfは、ボードゲーム会で「今日は5人だけど何ができる？」「あれ持ってるの誰だっけ？」に即答できる状態を作るためのWebサイトである。
+
+- メンバーが自分の所有するゲームを登録し、全員の蔵書を横断してプレイ人数から絞り込める
+- 利用者は特定のDiscordサーバーの参加者に限る。認証はDiscord OAuth2
+- 規模は数十人、ゲーム数は最大1000件、写真は数千枚。運用費はほぼゼロ(Cloudflare無料枠)を前提とする
+- ゲームの基本情報はメンバーの手入力。BGGのID/URLは任意の補助情報として持つが、自動取得はしない
+
+会場でスマートフォンから開く使い方を主とする。単一のCloudflare Workerが静的アセット(React SPA)とAPIの両方を配信する。
+
+## スコープ
+
+- Discordログイン/ログアウト。対象サーバーのメンバーのみ利用可
+- ゲームの登録、編集、削除(所有者は自分の登録のみ、管理者は全件)
+- ゲーム一覧(キーワード、プレイ人数、所有者で絞り込み)
+- ゲーム詳細(写真、人数、プレイ時間、コメント)
+- 写真登録(1ゲームあたり5枚まで)
+- 所有者ごとの棚
+- Discordへの通知(Webhook)
+- タグによる分類(登録は任意。誰でも登録できる)
+
+### スコープ外(恒久的に扱わない)
+
+- ゲーム自体の汎用データベース化(BGGの代替を目指さない)
+- 複数の会や複数のDiscordサーバーをまたぐマルチテナント化
+
+## ディレクトリ構成(予定)
+
+まだコードは存在しない。実装開始時に以下の構成で作る。
+
+```
+migrations/            D1マイグレーション(wrangler d1 migrations)
+  0001_init.sql
+src/
+  worker/               Hono API (Cloudflare Workers)
+    index.ts             Workerエントリ。Honoアプリの起動、静的アセットへのフォールバック
+    app.ts                ルーティング定義
+    auth/
+      discord.ts          OAuth2 (login/callback/PKCE)
+      session.ts           セッション発行、検証、Cookie操作
+    routes/
+      games.ts
+      photos.ts
+      users.ts
+      me.ts
+    db.ts                 D1クエリのラッパー
+    r2.ts                  R2 put/get のラッパー
+  client/                 React + Vite SPA
+    main.tsx
+    routes/                画面ごとのコンポーネント
+    components/
+    api.ts                 fetch ラッパー(型は shared から)
+    index.css              Tailwindのエントリ
+  shared/
+    types.ts               server/client共通のAPI型
+wrangler.jsonc
+package.json
+tsconfig.json
+biome.json
+```
+
+`src/shared/types.ts` に API のリクエスト/レスポンス型を集約し、worker側とclient側の両方から参照する。
+
+## 環境変数とバインディング
+
+`wrangler.jsonc`には次のバインディングと変数を持たせる。
+
+```jsonc
+{
+  "d1_databases": [{ "binding": "DB", "database_name": "boardgame-shelf" }],
+  "r2_buckets":   [{ "binding": "BUCKET", "bucket_name": "boardgame-shelf-photos" }],
+  "vars": {
+    "DISCORD_CLIENT_ID": "...",
+    "DISCORD_GUILD_ID": "...",
+    "ADMIN_DISCORD_IDS": "111...,222..."
+  }
+}
+```
+
+`DISCORD_CLIENT_SECRET`と`ADMIN_API_TOKEN`(`.agents/auth.md`参照)は`wrangler secret put`で登録し、`vars`には置かない。
+
+## 技術スタックとビルド
+
+| 層 | 採用 |
+| --- | --- |
+| 配信とAPI | Cloudflare Workers(単一Workerで静的アセット+API) |
+| APIフレームワーク | Hono |
+| データベース | D1 |
+| 画像ストレージ | R2 |
+| フロントエンド | React + Vite(SPA) + Tailwind CSS |
+| ルーティング(SPA内) | React Router v7、Library Mode(SSRを使わないSPAなので、v7のFramework Modeは採用しない) |
+| デプロイ | Wrangler(手動 or GitHub Actions) |
+| フォーマッタ/リンタ | Biome v2系(2スペース、行幅120、ダブルクォート) |
+| テスト | vitest(4.1以上) + `@cloudflare/vitest-pool-workers`(Workers環境をMiniflareでエミュレートし、D1/R2バインディングに対して実行) |
+| パッケージマネージャ | npm |
+
+- クライアントは `vite build` で静的アセットを出力し、`wrangler.jsonc` の `assets` にディレクトリを指定する
+- Worker本体(`src/worker/index.ts`)はビルド不要。`wrangler dev`/`wrangler deploy` が内部でesbuildバンドルするため、別途のビルドステップは要らない
+- 開発時は `wrangler dev` 1プロセスで完結させる方針とする(Vite devサーバーとの二重起動は行わず、`wrangler dev` の `assets` 機能でクライアントも配信する想定)。ホットリロードの体験が悪ければ、Vite devサーバー+プロキシ構成に見直す
+- 状態管理はログイン中ユーザー情報のみ軽量なReact Contextで共有し、それ以外は各画面のローカルstateとする。Redux等のグローバル状態管理ライブラリは規模的に不要と判断し導入しない
+- フォームはreact-hook-form等を使わず、controlled componentsで素朴に書く。入力項目数が少ないため
+
+## フロントエンド
+
+React + Vite + TypeScriptのSPA。画面数とフォームの多さから、素のDOM操作ではなくフレームワークを使う判断とした。
+
+### 画面一覧
+
+| パス | 内容 |
+| --- | --- |
+| `/login` | Discordログインボタンだけを置く |
+| `/` | 蔵書一覧。カードのグリッド。上部に絞り込み |
+| `/games/:id` | 詳細。写真、人数、時間、コメント、所有者 |
+| `/games/new`, `/games/:id/edit` | 登録と編集のフォーム |
+| `/users/:id` | そのメンバーの棚 |
+| `/me` | 自分の棚と表示名の設定 |
+
+ルーティングはReact Routerを使う。
+
+### 一覧の絞り込み
+
+三つの軸を上部に置く。
+
+- **人数**：1から8以上までのボタン。押すとその人数で遊べるゲームだけが残る(`min_players <= N <= max_players`)
+- **キーワード**：タイトル、読み、コメントに対する部分一致
+- **所有者**：メンバーの選択
+
+会場でスマートフォンから開く使い方が主なので、一覧は1画面に多くのタイトルが入る密度にし、絞り込みは指で押せる大きさのボタンで置く。全件をクライアントに取得済みなので、絞り込みはAPI再取得なしでその場で計算する(`.agents/api-contract.md`参照)。
+
+### スタイリング(Tailwind CSS)
+
+- `@tailwindcss/vite`プラグインを使い、`src/client/index.css`で`@import "tailwindcss";`する(v4系の構成)
+- コンポーネント単位のCSSファイルは作らず、utility classで完結させる。繰り返しが目立つ場合は`@apply`ではなくコンポーネント分割で対応する
+- モバイルファースト。ブレークポイントは基本Tailwindのデフォルト(`sm`/`md`/`lg`)をそのまま使う
+- カラーパレット、フォント等のデザイントークンのカスタマイズは今回は行わず、Tailwindのデフォルトテーマで進める
+
+### 写真アップロード
+
+1. `<input type="file" accept="image/*" capture>`で選択(スマートフォンではカメラ起動も選べる)
+2. `HTMLCanvasElement`で長辺1600pxまで縮小し、JPEGへ再符号化してから送信する(`.agents/api-contract.md`の「写真アップロードの流れ」参照)
+3. アップロード中はプレビューとプログレス表示を出す。1ゲーム5枚の上限、1枚2MBの上限(縮小後)をクライアント側でも事前チェックする
+
+再符号化にJPEGを使うのはWebPではなくSafari(iOS Safari含む)対策である。`canvas.toBlob()`/`toDataURL()`でのWebPエンコードはSafariが対応しておらず、会場でスマートフォンから開く使い方が主のこのサイトでは無視できない。JPEGなら主要ブラウザすべてでエンコードできる。
+
+## Discordへの通知
+
+サーバーのチャンネルにIncoming Webhookを作り、そのURLを`wrangler secret put`でシークレットとして登録する。
+ゲームが登録されたら、タイトル、所有者、人数、写真、詳細ページへのリンクをEmbedにしてそのWebhook URLへ送る。
+
+通知の送信はWorkerからのfetch呼び出しが1回増えるだけで済み、Botの常駐やトークン管理を要らない。
+投稿の失敗がゲーム登録の失敗にならないよう、`ctx.waitUntil`で本流の処理から切り離す。
+
+## タグ
+
+`tags`と`game_tags`(中間テーブル)でゲームに複数のタグを付けられるようにする。
+候補リストや承認フローは設けず、メンバーなら誰でもタグを新規作成し、任意のゲームに付与できる自由記述とする。
+
+## 運用
+
+- **バックアップ**：D1は`wrangler d1 export`で定期的にダンプする。R2はゲーム写真のみを保持し、失われても再登録できる範囲として扱う
+- **無料枠**：Workersは1日10万リクエスト、D1はストレージ5GB、読み取り500万行/日、書き込み10万行/日、R2はストレージ10GB(取り出し課金なし)。この規模の利用はどれも十分小さい。写真をブラウザ側で縮小する前提が崩れるとR2の消費が急増するため、その点だけ注意する
+- **退会者**：Discordサーバーを抜けたメンバーの登録は自動では削除しない。ゲームの情報自体は会にとって有用なので残し、必要に応じて管理者が`status`を`retired`にする
+
+## 明示的な決定事項
+
+- ルーティング、状態管理、フォームは上記の「技術スタックとビルド」節のとおり、追加ライブラリを最小限にする
+- パッケージマネージャはnpmで統一する
+- デプロイのCI自動化(GitHub Actionsからの`wrangler deploy`)は今回のスコープに含めない。Cloudflareアカウントのsecret設定が要るため、手動デプロイから始める
+- 登録フォームの必須項目はタイトルと人数のみとし、他は任意とする
+- 写真は1ゲームあたり5枚まで、1枚あたり2MBまでとする
+- 表示名は初回ログイン時にDiscordの名前を取り込み、以後はサイト内で変更できるようにする
+- 公開ドメインは `oykdn.work` のサブドメインを使う。サブドメイン名は暫定で `boardgame.oykdn.work` とする(変更したければDNSレコードの差し替えだけで済むため、後からでも安価に変えられる)
+
+## 実装の順序
+
+以下の順で進める。3までで「一覧できる」という目的の骨格が立つため、一度触ってみてから4以降に進める。
+
+1. **土台**：Wrangler、D1マイグレーション、Hono、Viteのビルドを通し、Workerが静的アセットと`/api/health`を返すところまで
+2. **認証**：Discord OAuth2、サーバー参加確認、セッション、`GET /api/me`。ログイン画面とログアウト
+3. **ゲームのCRUD**：登録フォーム、一覧、詳細、編集、削除(写真はまだ扱わない)
+4. **写真**：ブラウザ側の縮小、アップロード、R2配信、サムネイル表示
+5. **絞り込みと棚**：人数、キーワード、所有者。`/users/:id`と`/me`
+6. **通知とタグ**：ゲーム登録時のDiscord Webhook通知、タグの登録と表示
+7. **仕上げ**：スマートフォン表示の調整、空状態の文言、エラー表示、初期データの投入
