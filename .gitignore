@@ -74,6 +74,9 @@ web_modules/
 .env.*
 !.env.example
 
+# wrangler config (D1/R2/Discordの実IDを含むためgit管理外。wrangler.jsonc.exampleから生成する)
+wrangler.jsonc
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
