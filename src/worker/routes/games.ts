@@ -1,7 +1,15 @@
 import type { Context } from "hono";
 import type { CreateGameRequest, GameStatus, UpdateGameRequest } from "../../shared/types";
 import type { Variables } from "../auth/middleware";
-import { getGameById, insertGame, listActiveGames, listPhotosByGameId, softDeleteGame, updateGame } from "../db";
+import {
+  getGameById,
+  insertGame,
+  listActiveGames,
+  listPhotosByGameId,
+  listTagsForGame,
+  softDeleteGame,
+  updateGame,
+} from "../db";
 import type { Bindings } from "../env";
 
 export type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>;
@@ -127,8 +135,8 @@ export async function getGame(c: AppContext) {
   if (!game) {
     return c.json({ error: "not found" }, 404);
   }
-  const photos = await listPhotosByGameId(c.env.DB, game.id);
-  return c.json({ ...game, photos });
+  const [photos, tags] = await Promise.all([listPhotosByGameId(c.env.DB, game.id), listTagsForGame(c.env.DB, game.id)]);
+  return c.json({ ...game, photos, tags });
 }
 
 export async function patchGame(c: AppContext) {

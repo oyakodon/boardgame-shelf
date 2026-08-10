@@ -6,6 +6,7 @@ import { createGame, deleteGame, getGame, listGames, patchGame } from "./routes/
 import { serveImage } from "./routes/img";
 import { me } from "./routes/me";
 import { deletePhoto, uploadGamePhoto } from "./routes/photos";
+import { addTagToGame, listTags, removeTagFromGame } from "./routes/tags";
 
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -30,6 +31,10 @@ app.delete("/api/games/:id", requireAuth, requireSameOrigin, deleteGame);
 
 app.post("/api/games/:id/photos", requireAuth, requireSameOrigin, uploadGamePhoto);
 app.delete("/api/photos/:id", requireAuth, requireSameOrigin, deletePhoto);
+
+app.get("/api/tags", requireAuth, listTags);
+app.post("/api/games/:id/tags", requireAuth, requireSameOrigin, addTagToGame);
+app.delete("/api/games/:id/tags/:tagId", requireAuth, requireSameOrigin, removeTagFromGame);
 
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 app.all("/auth/*", (c) => c.json({ error: "not found" }, 404));
