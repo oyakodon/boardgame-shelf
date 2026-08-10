@@ -6,7 +6,7 @@
 
 対象は主にサーバー側の純粋ロジックと、DB/R2を絡めた統合的な挙動。
 
-- 人数絞り込みの判定(`min_players <= N <= max_players`)
+- 人数絞り込みの判定(`min_players <= N AND (max_players IS NULL OR max_players >= N)`。`max_players`未入力=上限なし)
 - セッションのハッシュ化と検証ロジック
 - 所有者/adminの認可判定(自分の登録のみ編集可、adminは全件可)
 - 論理削除後にゲーム一覧へ出てこないこと

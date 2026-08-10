@@ -1,4 +1,4 @@
-import type { Role, User } from "../shared/types";
+import type { CreateGameRequest, Game, Role, UpdateGameRequest, User } from "../shared/types";
 
 type UserRow = {
   id: string;
@@ -93,4 +93,125 @@ export async function extendSessionExpiry(db: D1Database, idHash: string, expire
 
 export async function deleteSession(db: D1Database, idHash: string): Promise<void> {
   await db.prepare("DELETE FROM sessions WHERE id_hash = ?").bind(idHash).run();
+}
+
+type GameRow = {
+  id: string;
+  owner_id: string;
+  title: string;
+  min_players: number;
+  max_players: number | null;
+  play_time_min: number | null;
+  play_time_max: number | null;
+  note: string | null;
+  bgg_id: number | null;
+  status: Game["status"];
+  created_at: number;
+  updated_at: number;
+};
+
+const GAME_COLUMNS =
+  "id, owner_id, title, min_players, max_players, play_time_min, play_time_max, note, bgg_id, status, created_at, updated_at";
+
+function toGame(row: GameRow): Game {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    title: row.title,
+    minPlayers: row.min_players,
+    maxPlayers: row.max_players,
+    playTimeMin: row.play_time_min,
+    playTimeMax: row.play_time_max,
+    note: row.note,
+    bggId: row.bgg_id,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function insertGame(
+  db: D1Database,
+  params: { id: string; ownerId: string } & CreateGameRequest,
+  now: number,
+): Promise<Game> {
+  await db
+    .prepare(
+      `INSERT INTO games
+         (id, owner_id, title, min_players, max_players, play_time_min, play_time_max, note, bgg_id, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', ?, ?)`,
+    )
+    .bind(
+      params.id,
+      params.ownerId,
+      params.title,
+      params.minPlayers,
+      params.maxPlayers ?? null,
+      params.playTimeMin ?? null,
+      params.playTimeMax ?? null,
+      params.note ?? null,
+      params.bggId ?? null,
+      now,
+      now,
+    )
+    .run();
+
+  const game = await getGameById(db, params.id);
+  if (!game) {
+    throw new Error(`insert succeeded but game ${params.id} not found`);
+  }
+  return game;
+}
+
+export async function listActiveGames(db: D1Database): Promise<Game[]> {
+  const { results } = await db
+    .prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE deleted_at IS NULL ORDER BY created_at DESC`)
+    .all<GameRow>();
+  return results.map(toGame);
+}
+
+export async function getGameById(db: D1Database, id: string): Promise<Game | null> {
+  const row = await db
+    .prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE id = ? AND deleted_at IS NULL`)
+    .bind(id)
+    .first<GameRow>();
+  return row ? toGame(row) : null;
+}
+
+const UPDATABLE_GAME_COLUMNS: Record<keyof UpdateGameRequest, string> = {
+  title: "title",
+  minPlayers: "min_players",
+  maxPlayers: "max_players",
+  playTimeMin: "play_time_min",
+  playTimeMax: "play_time_max",
+  note: "note",
+  bggId: "bgg_id",
+  status: "status",
+};
+
+export async function updateGame(
+  db: D1Database,
+  id: string,
+  patch: UpdateGameRequest,
+  now: number,
+): Promise<Game | null> {
+  const entries = Object.entries(patch).filter(([, value]) => value !== undefined) as Array<
+    [keyof UpdateGameRequest, unknown]
+  >;
+  const setClauses = entries.map(([key]) => `${UPDATABLE_GAME_COLUMNS[key]} = ?`);
+  const values = entries.map(([, value]) => value);
+
+  await db
+    .prepare(`UPDATE games SET ${[...setClauses, "updated_at = ?"].join(", ")} WHERE id = ? AND deleted_at IS NULL`)
+    .bind(...values, now, id)
+    .run();
+
+  return getGameById(db, id);
+}
+
+export async function softDeleteGame(db: D1Database, id: string, now: number): Promise<void> {
+  await db
+    .prepare("UPDATE games SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+    .bind(now, now, id)
+    .run();
 }

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { requireAuth, requireSameOrigin, type Variables } from "./auth/middleware";
 import { callback, login, logout } from "./auth/routes";
 import type { Bindings } from "./env";
+import { createGame, deleteGame, getGame, listGames, patchGame } from "./routes/games";
 import { me } from "./routes/me";
 
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -18,6 +19,12 @@ app.get("/auth/callback", callback);
 app.post("/auth/logout", requireAuth, requireSameOrigin, logout);
 
 app.get("/api/me", requireAuth, me);
+
+app.get("/api/games", requireAuth, listGames);
+app.post("/api/games", requireAuth, requireSameOrigin, createGame);
+app.get("/api/games/:id", requireAuth, getGame);
+app.patch("/api/games/:id", requireAuth, requireSameOrigin, patchGame);
+app.delete("/api/games/:id", requireAuth, requireSameOrigin, deleteGame);
 
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 app.all("/auth/*", (c) => c.json({ error: "not found" }, 404));
