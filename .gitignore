@@ -77,6 +77,10 @@ web_modules/
 # wrangler config (D1/R2/Discordの実IDを含むためgit管理外。wrangler.jsonc.exampleから生成する)
 wrangler.jsonc
 
+# wrangler devがローカルで読むシークレット(DISCORD_CLIENT_SECRET等)
+.dev.vars
+.dev.vars.*
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
