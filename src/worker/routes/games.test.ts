@@ -249,3 +249,133 @@ describe("DELETE /api/games/:id", () => {
     expect(getRes.status).toBe(404);
   });
 });
+
+describe("所有者と登録者の分離", () => {
+  it("defaults the owner to the registering user and records them as the registrant", async () => {
+    const { cookie } = await createUser("reg-1");
+    const game = await createGameViaApi(cookie);
+
+    expect(game.ownerId).toBe("reg-1");
+    expect(game.registeredById).toBe("reg-1");
+  });
+
+  it("registers a game on behalf of another member", async () => {
+    await createUser("reg-owner-2");
+    const { cookie } = await createUser("reg-2");
+
+    const game = await createGameViaApi(cookie, { ...validGame, ownerId: "reg-owner-2" });
+
+    expect(game.ownerId).toBe("reg-owner-2");
+    expect(game.ownerName).toBe("reg-owner-2");
+    expect(game.registeredById).toBe("reg-2");
+    expect(game.registeredByName).toBe("reg-2");
+  });
+
+  it("returns 400 when the specified owner does not exist", async () => {
+    const { cookie } = await createUser("reg-3");
+
+    const res = await authedFetch("/api/games", cookie, {
+      method: "POST",
+      body: JSON.stringify({ ...validGame, ownerId: "nonexistent-user" }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("lets the registrant edit a game they registered for someone else", async () => {
+    await createUser("reg-owner-4");
+    const { cookie } = await createUser("reg-4");
+    const game = await createGameViaApi(cookie, { ...validGame, ownerId: "reg-owner-4" });
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ note: "登録者による修正" }),
+    });
+
+    expect(patchRes.status).toBe(200);
+    expect(((await patchRes.json()) as Game).note).toBe("登録者による修正");
+  });
+
+  it("lets the owner edit a game registered on their behalf", async () => {
+    const { cookie: ownerCookie } = await createUser("reg-owner-5");
+    const { cookie: registrantCookie } = await createUser("reg-5");
+    const game = await createGameViaApi(registrantCookie, { ...validGame, ownerId: "reg-owner-5" });
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, ownerCookie, {
+      method: "PATCH",
+      body: JSON.stringify({ note: "所有者による修正" }),
+    });
+
+    expect(patchRes.status).toBe(200);
+  });
+
+  it("lets the registrant delete a game they registered for someone else", async () => {
+    await createUser("reg-owner-6");
+    const { cookie } = await createUser("reg-6");
+    const game = await createGameViaApi(cookie, { ...validGame, ownerId: "reg-owner-6" });
+
+    const deleteRes = await authedFetch(`/api/games/${game.id}`, cookie, { method: "DELETE" });
+    expect(deleteRes.status).toBe(204);
+  });
+
+  it("still forbids an unrelated member from editing", async () => {
+    await createUser("reg-owner-7");
+    const { cookie: registrantCookie } = await createUser("reg-7");
+    const game = await createGameViaApi(registrantCookie, { ...validGame, ownerId: "reg-owner-7" });
+
+    const { cookie: strangerCookie } = await createUser("reg-stranger-7");
+    const patchRes = await authedFetch(`/api/games/${game.id}`, strangerCookie, {
+      method: "PATCH",
+      body: JSON.stringify({ note: "無関係な人" }),
+    });
+
+    expect(patchRes.status).toBe(403);
+  });
+
+  it("transfers ownership via PATCH", async () => {
+    const { cookie } = await createUser("reg-8");
+    await createUser("reg-owner-8");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ ownerId: "reg-owner-8" }),
+    });
+
+    expect(patchRes.status).toBe(200);
+    const updated = (await patchRes.json()) as Game;
+    expect(updated.ownerId).toBe("reg-owner-8");
+    // 譲渡しても登録者は変わらないので、引き続き編集できる
+    expect(updated.registeredById).toBe("reg-8");
+  });
+
+  it("returns 400 when transferring ownership to a nonexistent user", async () => {
+    const { cookie } = await createUser("reg-9");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ ownerId: "nonexistent-user" }),
+    });
+
+    expect(patchRes.status).toBe(400);
+  });
+});
+
+describe("GET /api/users", () => {
+  it("requires authentication", async () => {
+    const res = await SELF.fetch(`${ORIGIN}/api/users`);
+    expect(res.status).toBe(401);
+  });
+
+  it("lists members with id and displayName", async () => {
+    const { cookie } = await createUser("member-list-1");
+
+    const res = await authedFetch("/api/users", cookie);
+    expect(res.status).toBe(200);
+
+    const members = (await res.json()) as Array<{ id: string; displayName: string }>;
+    const found = members.find((m) => m.id === "member-list-1");
+    expect(found?.displayName).toBe("member-list-1");
+  });
+});

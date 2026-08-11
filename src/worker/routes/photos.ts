@@ -1,6 +1,6 @@
 import { countPhotosByGameId, deletePhotoById, getPhotoWithGameOwner, insertGamePhoto } from "../db";
 import type { AppContext } from "./games";
-import { findGameOrNull } from "./games";
+import { canEditGame, findGameOrNull } from "./games";
 
 const MAX_PHOTOS_PER_GAME = 5;
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -18,7 +18,7 @@ export async function uploadGamePhoto(c: AppContext) {
   }
 
   const user = c.get("user");
-  if (game.ownerId !== user.id && user.role !== "admin") {
+  if (!canEditGame(game, user)) {
     return c.json({ error: "forbidden" }, 403);
   }
 
@@ -68,7 +68,7 @@ export async function deletePhoto(c: AppContext) {
   }
 
   const user = c.get("user");
-  if (photo.gameOwnerId !== user.id && user.role !== "admin") {
+  if (!canEditGame({ ownerId: photo.gameOwnerId, registeredById: photo.gameRegisteredById }, user)) {
     return c.json({ error: "forbidden" }, 403);
   }
 

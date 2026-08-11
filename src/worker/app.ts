@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { requireAuth, requireSameOrigin, type Variables } from "./auth/middleware";
 import { callback, login, logout } from "./auth/routes";
 import type { Bindings } from "./env";
-import { createGame, deleteGame, getGame, listGames, patchGame } from "./routes/games";
+import { createGame, deleteGame, getGame, listGames, listUsers, patchGame } from "./routes/games";
 import { serveImage } from "./routes/img";
 import { me } from "./routes/me";
 import { deletePhoto, uploadGamePhoto } from "./routes/photos";
@@ -22,6 +22,8 @@ app.get("/auth/callback", callback);
 app.post("/auth/logout", requireAuth, requireSameOrigin, logout);
 
 app.get("/api/me", requireAuth, me);
+
+app.get("/api/users", requireAuth, listUsers);
 
 app.get("/api/games", requireAuth, listGames);
 app.post("/api/games", requireAuth, requireSameOrigin, createGame);

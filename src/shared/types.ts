@@ -14,10 +14,17 @@ export type ErrorResponse = {
 
 export type GameStatus = "available" | "retired";
 
+export type Member = {
+  id: string;
+  displayName: string;
+};
+
 export type Game = {
   id: string;
   ownerId: string;
   ownerName: string;
+  registeredById: string | null;
+  registeredByName: string | null;
   title: string;
   minPlayers: number;
   maxPlayers: number | null;
@@ -59,6 +66,8 @@ export type CreateGameRequest = {
   playTimeMax?: number | null;
   note?: string | null;
   bggId?: number | null;
+  // 未指定なら登録操作をしたユーザー自身を所有者とする
+  ownerId?: string;
 };
 
 export type UpdateGameRequest = Partial<CreateGameRequest> & {

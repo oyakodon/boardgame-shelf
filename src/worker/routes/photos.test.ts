@@ -82,6 +82,20 @@ describe("POST /api/games/:id/photos", () => {
     expect(res.status).toBe(201);
   });
 
+  it("allows the registrant to upload a photo to a game they registered for someone else", async () => {
+    await createUser("photo-real-owner");
+    const { cookie: registrantCookie } = await createUser("photo-registrant");
+    const createRes = await authedFetch("/api/games", registrantCookie, {
+      method: "POST",
+      body: JSON.stringify({ title: "代理登録ゲーム", minPlayers: 2, ownerId: "photo-real-owner" }),
+    });
+    const game = (await createRes.json()) as Game;
+
+    const res = await uploadPhoto(game.id, registrantCookie);
+
+    expect(res.status).toBe(201);
+  });
+
   it("forbids a different member from uploading a photo", async () => {
     const { cookie: ownerCookie } = await createUser("photo-owner-3");
     const game = await createGameViaApi(ownerCookie);
