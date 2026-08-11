@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import type { CreateGameRequest, Member } from "../../shared/types";
 import { createGame, getGame, listMembers, updateGame } from "../api";
 import { useAuth } from "../auth-context";
+import { extractBggId } from "../bgg";
 
 type Mode = "create" | "edit";
 
@@ -106,7 +107,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
     const maxPlayers = toOptionalInt(form.maxPlayers);
     const playTimeMin = toOptionalInt(form.playTimeMin);
     const playTimeMax = toOptionalInt(form.playTimeMax);
-    const bggId = toOptionalInt(form.bggId);
+    const bggId = form.bggId.trim() ? extractBggId(form.bggId) : null;
 
     if (!form.title.trim()) {
       setError("タイトルを入力してください。");
@@ -116,8 +117,12 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       setError("最小人数は1以上の整数で入力してください。");
       return;
     }
-    if ([maxPlayers, playTimeMin, playTimeMax, bggId].some((n) => n !== null && (Number.isNaN(n) || n < 1))) {
+    if ([maxPlayers, playTimeMin, playTimeMax].some((n) => n !== null && (Number.isNaN(n) || n < 1))) {
       setError("数値項目は1以上の整数で入力してください。");
+      return;
+    }
+    if (form.bggId.trim() && bggId === null) {
+      setError("BGGのIDまたはURLを正しく入力してください。");
       return;
     }
     if (maxPlayers !== null && minPlayers > maxPlayers) {
@@ -268,13 +273,13 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           </label>
           <input
             id="bggId"
-            type="number"
-            inputMode="numeric"
-            min={1}
+            type="text"
             value={form.bggId}
             onChange={(e) => updateField("bggId", e.target.value)}
+            placeholder="13 または https://boardgamegeek.com/boardgame/13/catan"
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
           />
+          <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
         </div>
 
         <div>
