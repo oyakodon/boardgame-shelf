@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { GameDetail } from "../../shared/types";
-import { deleteGame, deletePhoto, getGame, uploadGamePhoto } from "../api";
+import type { GameDetail, Tag } from "../../shared/types";
+import { addGameTag, deleteGame, deletePhoto, getGame, listTags, removeGameTag, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
 import { playersLabel } from "../game-format";
 import { resizeImageToJpeg } from "../image-resize";
@@ -28,6 +28,9 @@ export function GameDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [tagInput, setTagInput] = useState("");
+  const [tagError, setTagError] = useState<string | null>(null);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
   useEffect(() => {
     if (!id) {
@@ -37,6 +40,12 @@ export function GameDetailPage() {
       .then(setGame)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "取得に失敗しました"));
   }, [id]);
+
+  useEffect(() => {
+    listTags()
+      .then(setAvailableTags)
+      .catch(() => {});
+  }, []);
 
   if (error) {
     return (
@@ -119,6 +128,35 @@ export function GameDetailPage() {
       .catch((err: unknown) => setPhotoError(err instanceof Error ? err.message : "削除に失敗しました"));
   }
 
+  async function handleAddTag(e: React.FormEvent) {
+    e.preventDefault();
+    const name = tagInput.trim();
+    if (!name || !game) {
+      return;
+    }
+    setTagError(null);
+    try {
+      const tags = await addGameTag(game.id, name);
+      setGame((prev) => (prev ? { ...prev, tags, tagNames: tags.map((t) => t.name) } : prev));
+      setTagInput("");
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : "タグの追加に失敗しました");
+    }
+  }
+
+  function handleRemoveTag(tagId: string) {
+    if (!game) return;
+    removeGameTag(game.id, tagId)
+      .then(() => {
+        setGame((prev) => {
+          if (!prev) return prev;
+          const tags = prev.tags.filter((t) => t.id !== tagId);
+          return { ...prev, tags, tagNames: tags.map((t) => t.name) };
+        });
+      })
+      .catch((err: unknown) => setTagError(err instanceof Error ? err.message : "タグの削除に失敗しました"));
+  }
+
   return (
     <main className="mx-auto max-w-2xl p-4">
       <Link to="/" className="text-sm text-indigo-600 hover:underline">
@@ -165,6 +203,48 @@ export function GameDetailPage() {
       </div>
       {photoError && <p className="mt-1 text-sm text-red-600">{photoError}</p>}
 
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {game.tags.map((tag) => (
+          <span
+            key={tag.id}
+            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700"
+          >
+            #{tag.name}
+            <button
+              type="button"
+              onClick={() => handleRemoveTag(tag.id)}
+              aria-label={`タグ「${tag.name}」を削除`}
+              className="text-gray-400 active:text-gray-700"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <form onSubmit={handleAddTag} className="flex items-center gap-1">
+          <input
+            list="tag-suggestions"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            placeholder="タグを追加"
+            maxLength={30}
+            className="min-h-8 w-28 rounded-full border border-gray-300 px-3 text-sm"
+          />
+          <datalist id="tag-suggestions">
+            {availableTags.map((tag) => (
+              <option key={tag.id} value={tag.name} />
+            ))}
+          </datalist>
+          <button
+            type="submit"
+            disabled={tagInput.trim().length === 0}
+            className="min-h-8 rounded-full border border-gray-300 px-3 text-sm text-gray-700 active:bg-gray-100 disabled:opacity-50"
+          >
+            追加
+          </button>
+        </form>
+      </div>
+      {tagError && <p className="mt-1 text-sm text-red-600">{tagError}</p>}
+
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex gap-2">
           <dt className="w-20 text-gray-500">人数</dt>
@@ -199,7 +279,7 @@ export function GameDetailPage() {
         )}
         <div className="flex gap-2">
           <dt className="w-20 text-gray-500">所有者</dt>
-          <dd className="text-gray-900">{game.ownerId === user?.id ? "自分" : "他のメンバー"}</dd>
+          <dd className="text-gray-900">{game.ownerId === user?.id ? `自分(${game.ownerName})` : game.ownerName}</dd>
         </div>
         {game.status === "retired" && (
           <div className="flex gap-2">

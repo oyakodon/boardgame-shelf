@@ -4,6 +4,7 @@ import type {
   Game,
   GameDetail,
   GamePhoto,
+  Tag,
   UpdateGameRequest,
   User,
 } from "../shared/types";
@@ -99,6 +100,34 @@ export async function uploadGamePhoto(gameId: string, blob: Blob): Promise<GameP
 
 export async function deletePhoto(photoId: string): Promise<void> {
   const res = await fetch(`/api/photos/${photoId}`, { method: "DELETE", credentials: "include" });
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+}
+
+export async function listTags(): Promise<Tag[]> {
+  const res = await fetch("/api/tags", { credentials: "include" });
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+  return res.json();
+}
+
+export async function addGameTag(gameId: string, name: string): Promise<Tag[]> {
+  const res = await fetch(`/api/games/${gameId}/tags`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+  return res.json();
+}
+
+export async function removeGameTag(gameId: string, tagId: string): Promise<void> {
+  const res = await fetch(`/api/games/${gameId}/tags/${tagId}`, { method: "DELETE", credentials: "include" });
   if (!res.ok) {
     throw new Error(await readErrorMessage(res));
   }

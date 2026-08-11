@@ -17,6 +17,7 @@ export type GameStatus = "available" | "retired";
 export type Game = {
   id: string;
   ownerId: string;
+  ownerName: string;
   title: string;
   minPlayers: number;
   maxPlayers: number | null;
@@ -26,6 +27,7 @@ export type Game = {
   bggId: number | null;
   status: GameStatus;
   thumbnailUrl: string | null;
+  tagNames: string[];
   createdAt: number;
   updatedAt: number;
 };
@@ -39,8 +41,14 @@ export type GamePhoto = {
   createdAt: number;
 };
 
+export type Tag = {
+  id: string;
+  name: string;
+};
+
 export type GameDetail = Game & {
   photos: GamePhoto[];
+  tags: Tag[];
 };
 
 export type CreateGameRequest = {

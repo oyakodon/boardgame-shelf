@@ -1,4 +1,6 @@
-import type { CreateGameRequest, Game, GamePhoto, Role, UpdateGameRequest, User } from "../shared/types";
+import type { CreateGameRequest, Game, GamePhoto, Role, Tag, UpdateGameRequest, User } from "../shared/types";
+
+const TAG_SEPARATOR = "\u001f";
 
 type UserRow = {
   id: string;
@@ -26,8 +28,8 @@ export async function getUserById(db: D1Database, id: string): Promise<User | nu
   return row ? toUser(row) : null;
 }
 
-// display_nameとroleは初回作成時のみ設定し、以後のログインでは上書きしない
-// (display_nameはユーザーが変更できる、roleは管理者がD1を直接操作して昇格/降格するため)
+// roleは初回作成時のみ設定し、以後のログインでは上書きしない
+// (管理者がD1を直接操作して昇格/降格するため)。display_nameはDiscord側の変更を反映するため毎回上書きする
 export async function upsertUserFromDiscordLogin(
   db: D1Database,
   params: {
@@ -45,6 +47,7 @@ export async function upsertUserFromDiscordLogin(
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          username = excluded.username,
+         display_name = excluded.display_name,
          avatar_url = excluded.avatar_url,
          updated_at = excluded.updated_at,
          last_login_at = excluded.last_login_at`,
@@ -98,6 +101,7 @@ export async function deleteSession(db: D1Database, idHash: string): Promise<voi
 type GameRow = {
   id: string;
   owner_id: string;
+  owner_name: string;
   title: string;
   min_players: number;
   max_players: number | null;
@@ -109,12 +113,24 @@ type GameRow = {
   created_at: number;
   updated_at: number;
   thumbnail_key: string | null;
+  tag_names_concat: string | null;
 };
 
 const GAME_COLUMNS_WITH_THUMBNAIL = `
-  g.id, g.owner_id, g.title, g.min_players, g.max_players, g.play_time_min, g.play_time_max,
-  g.note, g.bgg_id, g.status, g.created_at, g.updated_at, p.r2_key AS thumbnail_key
+  g.id, g.owner_id, COALESCE(u.display_name, '(不明なユーザー)') AS owner_name, g.title, g.min_players, g.max_players,
+  g.play_time_min, g.play_time_max, g.note, g.bgg_id, g.status, g.created_at, g.updated_at,
+  p.r2_key AS thumbnail_key,
+  (
+    SELECT GROUP_CONCAT(name, char(31)) FROM (
+      SELECT t.name AS name FROM game_tags gt
+      JOIN tags t ON t.id = gt.tag_id
+      WHERE gt.game_id = g.id
+      ORDER BY t.name ASC
+    )
+  ) AS tag_names_concat
 `;
+
+const OWNER_JOIN = "LEFT JOIN users u ON u.id = g.owner_id";
 
 const THUMBNAIL_JOIN = `
   LEFT JOIN game_photos p
@@ -127,10 +143,15 @@ export function imgUrl(r2Key: string | null): string | null {
   return r2Key ? `/img/${r2Key}` : null;
 }
 
+function parseTagNames(concat: string | null): string[] {
+  return concat ? concat.split(TAG_SEPARATOR) : [];
+}
+
 function toGame(row: GameRow): Game {
   return {
     id: row.id,
     ownerId: row.owner_id,
+    ownerName: row.owner_name,
     title: row.title,
     minPlayers: row.min_players,
     maxPlayers: row.max_players,
@@ -140,6 +161,7 @@ function toGame(row: GameRow): Game {
     bggId: row.bgg_id,
     status: row.status,
     thumbnailUrl: imgUrl(row.thumbnail_key),
+    tagNames: parseTagNames(row.tag_names_concat),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -181,7 +203,7 @@ export async function insertGame(
 export async function listActiveGames(db: D1Database): Promise<Game[]> {
   const { results } = await db
     .prepare(
-      `SELECT ${GAME_COLUMNS_WITH_THUMBNAIL} FROM games g ${THUMBNAIL_JOIN}
+      `SELECT ${GAME_COLUMNS_WITH_THUMBNAIL} FROM games g ${OWNER_JOIN} ${THUMBNAIL_JOIN}
        WHERE g.deleted_at IS NULL ORDER BY g.created_at DESC`,
     )
     .all<GameRow>();
@@ -191,7 +213,7 @@ export async function listActiveGames(db: D1Database): Promise<Game[]> {
 export async function getGameById(db: D1Database, id: string): Promise<Game | null> {
   const row = await db
     .prepare(
-      `SELECT ${GAME_COLUMNS_WITH_THUMBNAIL} FROM games g ${THUMBNAIL_JOIN}
+      `SELECT ${GAME_COLUMNS_WITH_THUMBNAIL} FROM games g ${OWNER_JOIN} ${THUMBNAIL_JOIN}
        WHERE g.id = ? AND g.deleted_at IS NULL`,
     )
     .bind(id)
@@ -324,4 +346,52 @@ export async function getPhotoWithGameOwner(
 
 export async function deletePhotoById(db: D1Database, photoId: string): Promise<void> {
   await db.prepare("DELETE FROM game_photos WHERE id = ?").bind(photoId).run();
+}
+
+type TagRow = { id: string; name: string };
+
+function toTag(row: TagRow): Tag {
+  return { id: row.id, name: row.name };
+}
+
+export async function listAllTags(db: D1Database): Promise<Tag[]> {
+  const { results } = await db.prepare("SELECT id, name FROM tags ORDER BY name ASC").all<TagRow>();
+  return results.map(toTag);
+}
+
+export async function listTagsForGame(db: D1Database, gameId: string): Promise<Tag[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT t.id AS id, t.name AS name FROM game_tags gt
+       JOIN tags t ON t.id = gt.tag_id
+       WHERE gt.game_id = ?
+       ORDER BY t.name ASC`,
+    )
+    .bind(gameId)
+    .all<TagRow>();
+  return results.map(toTag);
+}
+
+export async function findOrCreateTagByName(db: D1Database, name: string, now: number): Promise<Tag> {
+  await db
+    .prepare("INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?) ON CONFLICT(name) DO NOTHING")
+    .bind(crypto.randomUUID(), name, now)
+    .run();
+
+  const row = await db.prepare("SELECT id, name FROM tags WHERE name = ?").bind(name).first<TagRow>();
+  if (!row) {
+    throw new Error(`upsert succeeded but tag ${name} not found`);
+  }
+  return toTag(row);
+}
+
+export async function attachTagToGame(db: D1Database, gameId: string, tagId: string): Promise<void> {
+  await db
+    .prepare("INSERT INTO game_tags (game_id, tag_id) VALUES (?, ?) ON CONFLICT(game_id, tag_id) DO NOTHING")
+    .bind(gameId, tagId)
+    .run();
+}
+
+export async function detachTagFromGame(db: D1Database, gameId: string, tagId: string): Promise<void> {
+  await db.prepare("DELETE FROM game_tags WHERE game_id = ? AND tag_id = ?").bind(gameId, tagId).run();
 }
