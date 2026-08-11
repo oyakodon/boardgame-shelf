@@ -192,14 +192,7 @@ export function GameDetailPage() {
             <span className="text-xs">{uploading ? "アップロード中" : "写真を追加"}</span>
           </button>
         )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={handleFileSelected}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelected} />
       </div>
       {photoError && <p className="mt-1 text-sm text-red-600">{photoError}</p>}
 
