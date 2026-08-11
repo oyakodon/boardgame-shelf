@@ -9,7 +9,18 @@ on:
 
 jobs:
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # workflow_run は CI が pull_request でも動くため、branches: [main] だけでは
+    # フォークで main という名前のブランチからPRを作られた場合にも発火しうる。
+    # push トリガー由来かつ本リポジトリのコミットであることまで確認する。
+    # workflow_dispatch もmainブランチからの手動実行のみに限定する。
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
