@@ -43,6 +43,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [members, setMembers] = useState<Member[]>([]);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(mode === "edit");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +51,16 @@ export function GameFormPage({ mode }: { mode: Mode }) {
   useEffect(() => {
     listMembers()
       .then(setMembers)
-      .catch(() => {});
+      .catch((err: unknown) =>
+        setMembersError(err instanceof Error ? err.message : "メンバー一覧の取得に失敗しました"),
+      );
   }, []);
+
+  // メンバー一覧の取得に失敗しても、最低限「自分」だけは所有者に選べるようにする
+  const ownerOptions =
+    user && !members.some((m) => m.id === user.id)
+      ? [{ id: user.id, displayName: user.displayName }, ...members]
+      : members;
 
   // 新規登録では既定の所有者を自分にする(代理登録のときだけ選び直す)
   useEffect(() => {
@@ -180,13 +189,14 @@ export function GameFormPage({ mode }: { mode: Mode }) {
             onChange={(e) => updateField("ownerId", e.target.value)}
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
           >
-            {members.map((member) => (
+            {ownerOptions.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.id === user?.id ? `${member.displayName}(自分)` : member.displayName}
               </option>
             ))}
           </select>
           <p className="mt-1 text-xs text-gray-500">他の人の持ち物を代理で登録するときは選び直してください</p>
+          {membersError && <p className="mt-1 text-xs text-red-600">{membersError}(自分のみ選択できます)</p>}
         </div>
 
         <div className="flex gap-3">
