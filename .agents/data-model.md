@@ -30,7 +30,8 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);
 -- ゲーム
 CREATE TABLE games (
   id            TEXT PRIMARY KEY,       -- UUID v4
-  owner_id      TEXT NOT NULL REFERENCES users(id),
+  owner_id      TEXT NOT NULL REFERENCES users(id),  -- 実際の持ち主
+  registered_by_id TEXT REFERENCES users(id),        -- 入力した人。代理登録でなければ owner_id と同じ
   title         TEXT NOT NULL,
   min_players   INTEGER,
   max_players   INTEGER,
@@ -87,6 +88,10 @@ R2の実体は、論理削除から一定期間後にまとめて手動で消す
 
 **所有者の重複**：同じタイトルを複数人が持つ状況は普通に起きる。`games`は「誰の持ち物か」を単位とする表なので、タイトルの重複を制約で禁止しない。
 一覧では同一タイトルをまとめず、所有者名を添えて並べる。
+
+**所有者と登録者**：会場では「持ってきた本人ではない誰かがまとめて入力する」ことが実際に起きるため、`owner_id`(実際の持ち主)と`registered_by_id`(入力した人)を分けて持つ。
+`registered_by_id`は`0002`で後から追加した列であり、既存行は`owner_id`と同じ値で埋めてある(この列の追加前は両者が常に一致していた)。NOT NULL制約は付けていないが、アプリからの登録では必ず設定する。
+編集・削除の権限は所有者・登録者・adminの三者に与える。代理登録した人が自分の入力ミスを直すのにadminを待たなくてよいようにするためである。
 
 **セッション**：`sessions.id_hash`にはCookieに入れる値そのものではなく、そのSHA-256ハッシュを保存する。DBが読まれてもセッションを復元できないようにするためである。詳細は`.agents/auth.md`。
 
