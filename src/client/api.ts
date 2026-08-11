@@ -4,6 +4,7 @@ import type {
   Game,
   GameDetail,
   GamePhoto,
+  Member,
   Tag,
   UpdateGameRequest,
   User,
@@ -30,6 +31,14 @@ export async function logout(): Promise<void> {
 async function readErrorMessage(res: Response): Promise<string> {
   const body = (await res.json().catch(() => null)) as ErrorResponse | null;
   return body?.error ?? `request failed: ${res.status}`;
+}
+
+export async function listMembers(): Promise<Member[]> {
+  const res = await fetch("/api/users", { credentials: "include" });
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+  return res.json();
 }
 
 export async function listGames(): Promise<Game[]> {
