@@ -1,18 +1,26 @@
 import type { Context } from "hono";
-import type { CreateGameRequest, GameStatus, UpdateGameRequest } from "../../shared/types";
+import type { CreateGameRequest, Game, GameStatus, UpdateGameRequest, User } from "../../shared/types";
 import type { Variables } from "../auth/middleware";
 import {
   getGameById,
   insertGame,
   listActiveGames,
+  listMembers,
   listPhotosByGameId,
   listTagsForGame,
   softDeleteGame,
   updateGame,
+  userExists,
 } from "../db";
 import type { Bindings } from "../env";
 
 export type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>;
+
+// 所有者だけでなく登録者も編集できる。他人の持ち物を代理登録した人が、
+// 自分の入力ミスをadmin待ちにならず直せるようにするため(.agents/architecture.md参照)。
+export function canEditGame(game: Pick<Game, "ownerId" | "registeredById">, user: User): boolean {
+  return game.ownerId === user.id || game.registeredById === user.id || user.role === "admin";
+}
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -34,6 +42,10 @@ function isOptionalStatus(value: unknown): value is GameStatus | undefined {
   return value === undefined || value === "available" || value === "retired";
 }
 
+function isOptionalNonEmptyString(value: unknown): boolean {
+  return value === undefined || isNonEmptyString(value);
+}
+
 function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
   if (typeof body !== "object" || body === null) {
     return null;
@@ -50,7 +62,8 @@ function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
     !isOptionalPositiveInt(b.playTimeMin) ||
     !isOptionalPositiveInt(b.playTimeMax) ||
     !isOptionalString(b.note) ||
-    !isOptionalPositiveInt(b.bggId)
+    !isOptionalPositiveInt(b.bggId) ||
+    !isOptionalNonEmptyString(b.ownerId)
   ) {
     return null;
   }
@@ -58,7 +71,7 @@ function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
     return null;
   }
 
-  return {
+  const parsed: CreateGameRequest = {
     title: b.title.trim(),
     minPlayers: b.minPlayers,
     maxPlayers: (b.maxPlayers as number | null | undefined) ?? null,
@@ -67,6 +80,10 @@ function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
     note: (b.note as string | null | undefined) ?? null,
     bggId: (b.bggId as number | null | undefined) ?? null,
   };
+  if (b.ownerId !== undefined) {
+    parsed.ownerId = (b.ownerId as string).trim();
+  }
+  return parsed;
 }
 
 function parseUpdateGameRequest(body: unknown): UpdateGameRequest | null {
@@ -90,12 +107,14 @@ function parseUpdateGameRequest(body: unknown): UpdateGameRequest | null {
     !isOptionalPositiveInt(b.playTimeMax) ||
     !isOptionalString(b.note) ||
     !isOptionalPositiveInt(b.bggId) ||
-    !isOptionalStatus(b.status)
+    !isOptionalStatus(b.status) ||
+    !isOptionalNonEmptyString(b.ownerId)
   ) {
     return null;
   }
 
   const patch: UpdateGameRequest = {};
+  if (b.ownerId !== undefined) patch.ownerId = (b.ownerId as string).trim();
   if (b.title !== undefined) patch.title = (b.title as string).trim();
   if (b.minPlayers !== undefined) patch.minPlayers = b.minPlayers as number;
   if (b.maxPlayers !== undefined) patch.maxPlayers = b.maxPlayers as number | null;
@@ -112,6 +131,11 @@ export async function listGames(c: AppContext) {
   return c.json(games);
 }
 
+export async function listUsers(c: AppContext) {
+  const members = await listMembers(c.env.DB);
+  return c.json(members);
+}
+
 export async function createGame(c: AppContext) {
   const body = await c.req.json().catch(() => null);
   const parsed = parseCreateGameRequest(body);
@@ -120,8 +144,17 @@ export async function createGame(c: AppContext) {
   }
 
   const user = c.get("user");
+  const ownerId = parsed.ownerId ?? user.id;
+  if (ownerId !== user.id && !(await userExists(c.env.DB, ownerId))) {
+    return c.json({ error: "invalid request body" }, 400);
+  }
+
   const now = Math.floor(Date.now() / 1000);
-  const game = await insertGame(c.env.DB, { id: crypto.randomUUID(), ownerId: user.id, ...parsed }, now);
+  const game = await insertGame(
+    c.env.DB,
+    { ...parsed, id: crypto.randomUUID(), ownerId, registeredById: user.id },
+    now,
+  );
   return c.json(game, 201);
 }
 
@@ -146,7 +179,7 @@ export async function patchGame(c: AppContext) {
   }
 
   const user = c.get("user");
-  if (game.ownerId !== user.id && user.role !== "admin") {
+  if (!canEditGame(game, user)) {
     return c.json({ error: "forbidden" }, 403);
   }
 
@@ -162,6 +195,10 @@ export async function patchGame(c: AppContext) {
     return c.json({ error: "invalid request body" }, 400);
   }
 
+  if (parsed.ownerId !== undefined && !(await userExists(c.env.DB, parsed.ownerId))) {
+    return c.json({ error: "invalid request body" }, 400);
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const updated = await updateGame(c.env.DB, game.id, parsed, now);
   return c.json(updated);
@@ -174,7 +211,7 @@ export async function deleteGame(c: AppContext) {
   }
 
   const user = c.get("user");
-  if (game.ownerId !== user.id && user.role !== "admin") {
+  if (!canEditGame(game, user)) {
     return c.json({ error: "forbidden" }, 403);
   }
 

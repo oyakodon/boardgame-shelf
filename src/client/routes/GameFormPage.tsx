@@ -1,12 +1,14 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { CreateGameRequest } from "../../shared/types";
-import { createGame, getGame, updateGame } from "../api";
+import type { CreateGameRequest, Member } from "../../shared/types";
+import { createGame, getGame, listMembers, updateGame } from "../api";
+import { useAuth } from "../auth-context";
 
 type Mode = "create" | "edit";
 
 type FormState = {
   title: string;
+  ownerId: string;
   minPlayers: string;
   maxPlayers: string;
   playTimeMin: string;
@@ -17,6 +19,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   title: "",
+  ownerId: "",
   minPlayers: "",
   maxPlayers: "",
   playTimeMin: "",
@@ -37,10 +40,34 @@ function toOptionalInt(value: string): number | null {
 export function GameFormPage({ mode }: { mode: Mode }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(mode === "edit");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listMembers()
+      .then(setMembers)
+      .catch((err: unknown) =>
+        setMembersError(err instanceof Error ? err.message : "メンバー一覧の取得に失敗しました"),
+      );
+  }, []);
+
+  // メンバー一覧の取得に失敗しても、最低限「自分」だけは所有者に選べるようにする
+  const ownerOptions =
+    user && !members.some((m) => m.id === user.id)
+      ? [{ id: user.id, displayName: user.displayName }, ...members]
+      : members;
+
+  // 新規登録では既定の所有者を自分にする(代理登録のときだけ選び直す)
+  useEffect(() => {
+    if (mode === "create" && user) {
+      setForm((prev) => (prev.ownerId ? prev : { ...prev, ownerId: user.id }));
+    }
+  }, [mode, user]);
 
   useEffect(() => {
     if (mode !== "edit" || !id) {
@@ -54,6 +81,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
         }
         setForm({
           title: game.title,
+          ownerId: game.ownerId,
           minPlayers: String(game.minPlayers),
           maxPlayers: game.maxPlayers !== null ? String(game.maxPlayers) : "",
           playTimeMin: game.playTimeMin !== null ? String(game.playTimeMin) : "",
@@ -106,6 +134,9 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       note: form.note.trim() || null,
       bggId,
     };
+    if (form.ownerId) {
+      body.ownerId = form.ownerId;
+    }
 
     setSubmitting(true);
     try {
@@ -146,6 +177,26 @@ export function GameFormPage({ mode }: { mode: Mode }) {
             onChange={(e) => updateField("title", e.target.value)}
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
           />
+        </div>
+
+        <div>
+          <label htmlFor="ownerId" className="block text-sm font-medium text-gray-700">
+            所有者<span className="text-red-600">*</span>
+          </label>
+          <select
+            id="ownerId"
+            value={form.ownerId}
+            onChange={(e) => updateField("ownerId", e.target.value)}
+            className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
+          >
+            {ownerOptions.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.id === user?.id ? `${member.displayName}(自分)` : member.displayName}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">他の人の持ち物を代理で登録するときは選び直してください</p>
+          {membersError && <p className="mt-1 text-xs text-red-600">{membersError}(自分のみ選択できます)</p>}
         </div>
 
         <div className="flex gap-3">

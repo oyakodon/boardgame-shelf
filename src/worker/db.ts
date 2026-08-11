@@ -1,4 +1,4 @@
-import type { CreateGameRequest, Game, GamePhoto, Role, Tag, UpdateGameRequest, User } from "../shared/types";
+import type { CreateGameRequest, Game, GamePhoto, Member, Role, Tag, UpdateGameRequest, User } from "../shared/types";
 
 const TAG_SEPARATOR = "\u001f";
 
@@ -26,6 +26,18 @@ export async function getUserById(db: D1Database, id: string): Promise<User | nu
     .bind(id)
     .first<UserRow>();
   return row ? toUser(row) : null;
+}
+
+export async function listMembers(db: D1Database): Promise<Member[]> {
+  const { results } = await db
+    .prepare("SELECT id, display_name FROM users ORDER BY display_name ASC")
+    .all<{ id: string; display_name: string }>();
+  return results.map((row) => ({ id: row.id, displayName: row.display_name }));
+}
+
+export async function userExists(db: D1Database, id: string): Promise<boolean> {
+  const row = await db.prepare("SELECT 1 AS ok FROM users WHERE id = ?").bind(id).first<{ ok: number }>();
+  return row !== null;
 }
 
 // roleは初回作成時のみ設定し、以後のログインでは上書きしない
@@ -102,6 +114,8 @@ type GameRow = {
   id: string;
   owner_id: string;
   owner_name: string;
+  registered_by_id: string | null;
+  registered_by_name: string | null;
   title: string;
   min_players: number;
   max_players: number | null;
@@ -117,7 +131,9 @@ type GameRow = {
 };
 
 const GAME_COLUMNS_WITH_THUMBNAIL = `
-  g.id, g.owner_id, COALESCE(u.display_name, '(不明なユーザー)') AS owner_name, g.title, g.min_players, g.max_players,
+  g.id, g.owner_id, COALESCE(u.display_name, '(不明なユーザー)') AS owner_name,
+  g.registered_by_id, r.display_name AS registered_by_name,
+  g.title, g.min_players, g.max_players,
   g.play_time_min, g.play_time_max, g.note, g.bgg_id, g.status, g.created_at, g.updated_at,
   p.r2_key AS thumbnail_key,
   (
@@ -130,7 +146,10 @@ const GAME_COLUMNS_WITH_THUMBNAIL = `
   ) AS tag_names_concat
 `;
 
-const OWNER_JOIN = "LEFT JOIN users u ON u.id = g.owner_id";
+const OWNER_JOIN = `
+  LEFT JOIN users u ON u.id = g.owner_id
+  LEFT JOIN users r ON r.id = g.registered_by_id
+`;
 
 const THUMBNAIL_JOIN = `
   LEFT JOIN game_photos p
@@ -152,6 +171,8 @@ function toGame(row: GameRow): Game {
     id: row.id,
     ownerId: row.owner_id,
     ownerName: row.owner_name,
+    registeredById: row.registered_by_id,
+    registeredByName: row.registered_by_name,
     title: row.title,
     minPlayers: row.min_players,
     maxPlayers: row.max_players,
@@ -169,18 +190,19 @@ function toGame(row: GameRow): Game {
 
 export async function insertGame(
   db: D1Database,
-  params: { id: string; ownerId: string } & CreateGameRequest,
+  params: { id: string; ownerId: string; registeredById: string } & CreateGameRequest,
   now: number,
 ): Promise<Game> {
   await db
     .prepare(
       `INSERT INTO games
-         (id, owner_id, title, min_players, max_players, play_time_min, play_time_max, note, bgg_id, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', ?, ?)`,
+         (id, owner_id, registered_by_id, title, min_players, max_players, play_time_min, play_time_max, note, bgg_id, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', ?, ?)`,
     )
     .bind(
       params.id,
       params.ownerId,
+      params.registeredById,
       params.title,
       params.minPlayers,
       params.maxPlayers ?? null,
@@ -230,6 +252,7 @@ const UPDATABLE_GAME_COLUMNS: Record<keyof UpdateGameRequest, string> = {
   note: "note",
   bggId: "bgg_id",
   status: "status",
+  ownerId: "owner_id",
 };
 
 export async function updateGame(
@@ -331,17 +354,38 @@ export async function insertGamePhoto(
 export async function getPhotoWithGameOwner(
   db: D1Database,
   photoId: string,
-): Promise<{ id: string; r2Key: string; gameId: string; gameOwnerId: string } | null> {
+): Promise<{
+  id: string;
+  r2Key: string;
+  gameId: string;
+  gameOwnerId: string;
+  gameRegisteredById: string | null;
+} | null> {
   const row = await db
     .prepare(
-      `SELECT p.id AS id, p.r2_key AS r2_key, p.game_id AS game_id, g.owner_id AS game_owner_id
+      `SELECT p.id AS id, p.r2_key AS r2_key, p.game_id AS game_id,
+              g.owner_id AS game_owner_id, g.registered_by_id AS game_registered_by_id
        FROM game_photos p
        JOIN games g ON g.id = p.game_id
        WHERE p.id = ?`,
     )
     .bind(photoId)
-    .first<{ id: string; r2_key: string; game_id: string; game_owner_id: string }>();
-  return row ? { id: row.id, r2Key: row.r2_key, gameId: row.game_id, gameOwnerId: row.game_owner_id } : null;
+    .first<{
+      id: string;
+      r2_key: string;
+      game_id: string;
+      game_owner_id: string;
+      game_registered_by_id: string | null;
+    }>();
+  return row
+    ? {
+        id: row.id,
+        r2Key: row.r2_key,
+        gameId: row.game_id,
+        gameOwnerId: row.game_owner_id,
+        gameRegisteredById: row.game_registered_by_id,
+      }
+    : null;
 }
 
 export async function deletePhotoById(db: D1Database, photoId: string): Promise<void> {

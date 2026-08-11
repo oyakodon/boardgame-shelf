@@ -171,6 +171,7 @@ React + Vite + TypeScriptのSPA。画面数とフォームの多さから、素�
 - パッケージマネージャはnpmで統一する
 - デプロイはGitHub Actions(`.github/workflows/deploy.yml`)で自動化する。`CI`ワークフローがmainで成功した後に`workflow_run`でつながり、D1マイグレーション適用と`wrangler deploy`を行う。`wrangler.jsonc`はD1/R2のIDやDiscordのID等の非秘密情報を含むがgit管理はせず、CI実行時に`wrangler.jsonc.example`のプレースホルダーをGitHub Actionsのrepository variablesで置き換えて都度生成する(ローカル開発は`scripts/ensure-wrangler-config.mjs`で各自生成する運用のまま)。真に秘密な`DISCORD_CLIENT_SECRET`・`ADMIN_API_TOKEN`は引き続き`wrangler secret put`で個別に投入する
 - 登録フォームの必須項目はタイトルと最小人数のみとし、他は任意とする。最大人数は未入力可で、その場合は「上限なし」を表す(実在するボードゲームでも上限のない/決まっていないものがあるため)
+- 所有者(実際の持ち主)と登録者(入力した人)を分けて持つ。会場では持ってきた本人以外がまとめて入力することが実際に起きるため。登録フォームで所有者をメンバーから選べるようにし(既定は自分)、編集・削除は所有者・登録者・adminの三者に許す。所有者に指定できるのはログイン済みのメンバーだけとする(`users`への外部キーを保てるため。未ログインの人の持ち物は、その人が一度ログインすれば選べるようになる)
 - 写真は1ゲームあたり5枚まで、1枚あたり2MBまでとする
 - 表示名はDiscordの名前をそのまま使う。サイト内で個別に変更する機能は持たず、ログインのたびにDiscord側の最新の名前で上書きする
 - 公開ドメインは `oykdn.com` のサブドメイン `game.oykdn.com` を使う。`wrangler.jsonc`の`routes`に`custom_domain: true`で設定し、`wrangler deploy`時にCloudflare側のCustom Domainとして自動アタッチされる

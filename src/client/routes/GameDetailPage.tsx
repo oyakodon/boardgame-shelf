@@ -74,7 +74,8 @@ export function GameDetailPage() {
     );
   }
 
-  const canEdit = user?.id === game.ownerId || user?.role === "admin";
+  // 所有者だけでなく登録者(代理登録した人)も編集できる
+  const canEdit = user?.id === game.ownerId || user?.id === game.registeredById || user?.role === "admin";
   const time = playTimeLabel(game);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -274,6 +275,14 @@ export function GameDetailPage() {
           <dt className="w-20 text-gray-500">所有者</dt>
           <dd className="text-gray-900">{game.ownerId === user?.id ? `自分(${game.ownerName})` : game.ownerName}</dd>
         </div>
+        {game.registeredByName && game.registeredById !== game.ownerId && (
+          <div className="flex gap-2">
+            <dt className="w-20 text-gray-500">登録者</dt>
+            <dd className="text-gray-900">
+              {game.registeredById === user?.id ? `自分(${game.registeredByName})` : game.registeredByName}
+            </dd>
+          </div>
+        )}
         {game.status === "retired" && (
           <div className="flex gap-2">
             <dt className="w-20 text-gray-500">状態</dt>

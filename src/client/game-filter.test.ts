@@ -7,6 +7,8 @@ function makeGame(overrides: Partial<Game> = {}): Game {
     id: "game-1",
     ownerId: "owner-1",
     ownerName: "オーナー",
+    registeredById: "owner-1",
+    registeredByName: "オーナー",
     title: "カタン",
     minPlayers: 3,
     maxPlayers: 4,
