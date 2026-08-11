@@ -169,11 +169,11 @@ React + Vite + TypeScriptのSPA。画面数とフォームの多さから、素�
 
 - ルーティング、状態管理、フォームは上記の「技術スタックとビルド」節のとおり、追加ライブラリを最小限にする
 - パッケージマネージャはnpmで統一する
-- デプロイのCI自動化(GitHub Actionsからの`wrangler deploy`)は今回のスコープに含めない。Cloudflareアカウントのsecret設定が要るため、手動デプロイから始める
+- デプロイはGitHub Actions(`.github/workflows/deploy.yml`)で自動化する。`CI`ワークフローがmainで成功した後に`workflow_run`でつながり、D1マイグレーション適用と`wrangler deploy`を行う。`wrangler.jsonc`はD1/R2のIDやDiscordのID等の非秘密情報を含むがgit管理はせず、CI実行時に`wrangler.jsonc.example`のプレースホルダーをGitHub Actionsのrepository variablesで置き換えて都度生成する(ローカル開発は`scripts/ensure-wrangler-config.mjs`で各自生成する運用のまま)。真に秘密な`DISCORD_CLIENT_SECRET`・`ADMIN_API_TOKEN`は引き続き`wrangler secret put`で個別に投入する
 - 登録フォームの必須項目はタイトルと最小人数のみとし、他は任意とする。最大人数は未入力可で、その場合は「上限なし」を表す(実在するボードゲームでも上限のない/決まっていないものがあるため)
 - 写真は1ゲームあたり5枚まで、1枚あたり2MBまでとする
 - 表示名はDiscordの名前をそのまま使う。サイト内で個別に変更する機能は持たず、ログインのたびにDiscord側の最新の名前で上書きする
-- 公開ドメインは `oykdn.work` のサブドメインを使う。サブドメイン名は暫定で `boardgame.oykdn.work` とする(変更したければDNSレコードの差し替えだけで済むため、後からでも安価に変えられる)
+- 公開ドメインは `oykdn.com` のサブドメイン `game.oykdn.com` を使う。`wrangler.jsonc`の`routes`に`custom_domain: true`で設定し、`wrangler deploy`時にCloudflare側のCustom Domainとして自動アタッチされる
 
 ## 実装の順序
 
