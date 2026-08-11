@@ -104,6 +104,7 @@ export function GameListPage() {
               key={n}
               type="button"
               onClick={() => togglePlayers(n)}
+              aria-pressed={criteria.players === n}
               className={chipClass(criteria.players === n)}
             >
               {i === PLAYER_OPTIONS.length - 1 ? `${n}+` : n}
@@ -118,6 +119,7 @@ export function GameListPage() {
                 key={id}
                 type="button"
                 onClick={() => toggleOwner(id)}
+                aria-pressed={criteria.ownerId === id}
                 className={chipClass(criteria.ownerId === id)}
               >
                 {name}
@@ -133,6 +135,7 @@ export function GameListPage() {
                 key={tag}
                 type="button"
                 onClick={() => toggleTag(tag)}
+                aria-pressed={criteria.tags.includes(tag)}
                 className={chipClass(criteria.tags.includes(tag))}
               >
                 #{tag}
