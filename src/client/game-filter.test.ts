@@ -16,6 +16,7 @@ function makeGame(overrides: Partial<Game> = {}): Game {
     playTimeMax: null,
     note: null,
     bggId: null,
+    bgaSlug: null,
     status: "available",
     thumbnailUrl: null,
     tagNames: [],

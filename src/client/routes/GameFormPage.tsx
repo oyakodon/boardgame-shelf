@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import type { CreateGameRequest, Member } from "../../shared/types";
 import { createGame, getGame, listMembers, updateGame } from "../api";
 import { useAuth } from "../auth-context";
+import { extractBgaSlug } from "../bga";
 import { extractBggId } from "../bgg";
 
 type Mode = "create" | "edit";
@@ -16,6 +17,7 @@ type FormState = {
   playTimeMax: string;
   note: string;
   bggId: string;
+  bgaSlug: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -27,6 +29,7 @@ const EMPTY_FORM: FormState = {
   playTimeMax: "",
   note: "",
   bggId: "",
+  bgaSlug: "",
 };
 
 function toOptionalInt(value: string): number | null {
@@ -89,6 +92,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           playTimeMax: game.playTimeMax !== null ? String(game.playTimeMax) : "",
           note: game.note ?? "",
           bggId: game.bggId !== null ? String(game.bggId) : "",
+          bgaSlug: game.bgaSlug ?? "",
         });
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "取得に失敗しました"))
@@ -108,6 +112,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
     const playTimeMin = toOptionalInt(form.playTimeMin);
     const playTimeMax = toOptionalInt(form.playTimeMax);
     const bggId = form.bggId.trim() ? extractBggId(form.bggId) : null;
+    const bgaSlug = form.bgaSlug.trim() ? extractBgaSlug(form.bgaSlug) : null;
 
     if (!form.title.trim()) {
       setError("タイトルを入力してください。");
@@ -125,6 +130,10 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       setError("BGGのIDまたはURLを正しく入力してください。");
       return;
     }
+    if (form.bgaSlug.trim() && bgaSlug === null) {
+      setError("BGAのIDまたはURLを正しく入力してください。");
+      return;
+    }
     if (maxPlayers !== null && minPlayers > maxPlayers) {
       setError("最小人数は最大人数以下にしてください。");
       return;
@@ -138,6 +147,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       playTimeMax,
       note: form.note.trim() || null,
       bggId,
+      bgaSlug,
     };
     if (form.ownerId) {
       body.ownerId = form.ownerId;
@@ -277,6 +287,21 @@ export function GameFormPage({ mode }: { mode: Mode }) {
             value={form.bggId}
             onChange={(e) => updateField("bggId", e.target.value)}
             placeholder="13 または https://boardgamegeek.com/boardgame/13/catan"
+            className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
+          />
+          <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
+        </div>
+
+        <div>
+          <label htmlFor="bgaSlug" className="block text-sm font-medium text-gray-700">
+            BGA(ボードゲームアリーナ)
+          </label>
+          <input
+            id="bgaSlug"
+            type="text"
+            value={form.bgaSlug}
+            onChange={(e) => updateField("bgaSlug", e.target.value)}
+            placeholder="raceforthegalaxy または https://boardgamearena.com/gamepanel?game=raceforthegalaxy"
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
           />
           <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
