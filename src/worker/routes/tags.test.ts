@@ -131,6 +131,15 @@ describe("POST /api/games/:id/tags", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 for a tag name containing a control character", async () => {
+    const { cookie } = await createUser("tag-owner-7b");
+    const game = await createGameViaApi(cookie);
+
+    const res = await addTag(game.id, cookie, `重ゲー${String.fromCharCode(0x1f)}軽ゲー`);
+
+    expect(res.status).toBe(400);
+  });
+
   it("returns 400 for a tag name longer than 30 characters", async () => {
     const { cookie } = await createUser("tag-owner-7");
     const game = await createGameViaApi(cookie);

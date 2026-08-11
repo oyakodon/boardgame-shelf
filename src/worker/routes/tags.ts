@@ -3,6 +3,8 @@ import type { AppContext } from "./games";
 import { findGameOrNull } from "./games";
 
 const MAX_TAG_NAME_LENGTH = 30;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: 制御文字を弾くために意図的に使用する
+const CONTROL_CHARS = /[\x00-\x1f\x7f]/;
 
 function parseTagName(body: unknown): string | null {
   if (typeof body !== "object" || body === null) {
@@ -13,7 +15,7 @@ function parseTagName(body: unknown): string | null {
     return null;
   }
   const trimmed = name.trim();
-  if (trimmed.length === 0 || trimmed.length > MAX_TAG_NAME_LENGTH) {
+  if (trimmed.length === 0 || trimmed.length > MAX_TAG_NAME_LENGTH || CONTROL_CHARS.test(trimmed)) {
     return null;
   }
   return trimmed;

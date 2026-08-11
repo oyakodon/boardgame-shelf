@@ -117,7 +117,7 @@ type GameRow = {
 };
 
 const GAME_COLUMNS_WITH_THUMBNAIL = `
-  g.id, g.owner_id, u.display_name AS owner_name, g.title, g.min_players, g.max_players,
+  g.id, g.owner_id, COALESCE(u.display_name, '(不明なユーザー)') AS owner_name, g.title, g.min_players, g.max_players,
   g.play_time_min, g.play_time_max, g.note, g.bgg_id, g.status, g.created_at, g.updated_at,
   p.r2_key AS thumbnail_key,
   (
@@ -130,7 +130,7 @@ const GAME_COLUMNS_WITH_THUMBNAIL = `
   ) AS tag_names_concat
 `;
 
-const OWNER_JOIN = "JOIN users u ON u.id = g.owner_id";
+const OWNER_JOIN = "LEFT JOIN users u ON u.id = g.owner_id";
 
 const THUMBNAIL_JOIN = `
   LEFT JOIN game_photos p
