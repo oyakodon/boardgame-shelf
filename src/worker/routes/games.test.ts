@@ -117,6 +117,30 @@ describe("POST /api/games", () => {
     expect(res.status).toBe(400);
   });
 
+  it("creates a game with a valid BGA slug", async () => {
+    const { cookie } = await createUser("owner-bga-1");
+
+    const res = await authedFetch("/api/games", cookie, {
+      method: "POST",
+      body: JSON.stringify({ ...validGame, bgaSlug: "raceforthegalaxy" }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Game;
+    expect(body.bgaSlug).toBe("raceforthegalaxy");
+  });
+
+  it("returns 400 when bgaSlug contains characters outside the allowed slug format", async () => {
+    const { cookie } = await createUser("owner-bga-2");
+
+    const res = await authedFetch("/api/games", cookie, {
+      method: "POST",
+      body: JSON.stringify({ ...validGame, bgaSlug: "https://boardgamearena.com/gamepanel?game=x" }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
   it("returns 403 when Origin does not match", async () => {
     const { cookie } = await createUser("owner-4");
 

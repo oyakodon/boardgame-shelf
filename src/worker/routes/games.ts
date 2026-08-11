@@ -46,6 +46,15 @@ function isOptionalNonEmptyString(value: unknown): boolean {
   return value === undefined || isNonEmptyString(value);
 }
 
+const BGA_SLUG_PATTERN = /^[a-z0-9_-]{1,64}$/;
+
+// サーバー側ではURLのパース(クエリパラメータ抽出等)は行わず、
+// スラッグ形式だけを厳格に検証する。表示時に組み立てるURLが
+// 必ずboardgamearena.com配下になることを保証するため。
+function isOptionalBgaSlug(value: unknown): boolean {
+  return value === undefined || value === null || (typeof value === "string" && BGA_SLUG_PATTERN.test(value));
+}
+
 function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
   if (typeof body !== "object" || body === null) {
     return null;
@@ -63,6 +72,7 @@ function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
     !isOptionalPositiveInt(b.playTimeMax) ||
     !isOptionalString(b.note) ||
     !isOptionalPositiveInt(b.bggId) ||
+    !isOptionalBgaSlug(b.bgaSlug) ||
     !isOptionalNonEmptyString(b.ownerId)
   ) {
     return null;
@@ -79,6 +89,7 @@ function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
     playTimeMax: (b.playTimeMax as number | null | undefined) ?? null,
     note: (b.note as string | null | undefined) ?? null,
     bggId: (b.bggId as number | null | undefined) ?? null,
+    bgaSlug: (b.bgaSlug as string | null | undefined) ?? null,
   };
   if (b.ownerId !== undefined) {
     parsed.ownerId = (b.ownerId as string).trim();
@@ -107,6 +118,7 @@ function parseUpdateGameRequest(body: unknown): UpdateGameRequest | null {
     !isOptionalPositiveInt(b.playTimeMax) ||
     !isOptionalString(b.note) ||
     !isOptionalPositiveInt(b.bggId) ||
+    !isOptionalBgaSlug(b.bgaSlug) ||
     !isOptionalStatus(b.status) ||
     !isOptionalNonEmptyString(b.ownerId)
   ) {
@@ -122,6 +134,7 @@ function parseUpdateGameRequest(body: unknown): UpdateGameRequest | null {
   if (b.playTimeMax !== undefined) patch.playTimeMax = b.playTimeMax as number | null;
   if (b.note !== undefined) patch.note = b.note as string | null;
   if (b.bggId !== undefined) patch.bggId = b.bggId as number | null;
+  if (b.bgaSlug !== undefined) patch.bgaSlug = b.bgaSlug as string | null;
   if (b.status !== undefined) patch.status = b.status as GameStatus;
   return patch;
 }

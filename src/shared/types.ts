@@ -32,6 +32,7 @@ export type Game = {
   playTimeMax: number | null;
   note: string | null;
   bggId: number | null;
+  bgaSlug: string | null;
   status: GameStatus;
   thumbnailUrl: string | null;
   tagNames: string[];
@@ -66,6 +67,7 @@ export type CreateGameRequest = {
   playTimeMax?: number | null;
   note?: string | null;
   bggId?: number | null;
+  bgaSlug?: string | null;
   // 未指定なら登録操作をしたユーザー自身を所有者とする
   ownerId?: string;
 };

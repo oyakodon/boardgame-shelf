@@ -123,6 +123,7 @@ type GameRow = {
   play_time_max: number | null;
   note: string | null;
   bgg_id: number | null;
+  bga_slug: string | null;
   status: Game["status"];
   created_at: number;
   updated_at: number;
@@ -134,7 +135,7 @@ const GAME_COLUMNS_WITH_THUMBNAIL = `
   g.id, g.owner_id, COALESCE(u.display_name, '(不明なユーザー)') AS owner_name,
   g.registered_by_id, r.display_name AS registered_by_name,
   g.title, g.min_players, g.max_players,
-  g.play_time_min, g.play_time_max, g.note, g.bgg_id, g.status, g.created_at, g.updated_at,
+  g.play_time_min, g.play_time_max, g.note, g.bgg_id, g.bga_slug, g.status, g.created_at, g.updated_at,
   p.r2_key AS thumbnail_key,
   (
     SELECT GROUP_CONCAT(name, char(31)) FROM (
@@ -180,6 +181,7 @@ function toGame(row: GameRow): Game {
     playTimeMax: row.play_time_max,
     note: row.note,
     bggId: row.bgg_id,
+    bgaSlug: row.bga_slug,
     status: row.status,
     thumbnailUrl: imgUrl(row.thumbnail_key),
     tagNames: parseTagNames(row.tag_names_concat),
@@ -196,8 +198,8 @@ export async function insertGame(
   await db
     .prepare(
       `INSERT INTO games
-         (id, owner_id, registered_by_id, title, min_players, max_players, play_time_min, play_time_max, note, bgg_id, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', ?, ?)`,
+         (id, owner_id, registered_by_id, title, min_players, max_players, play_time_min, play_time_max, note, bgg_id, bga_slug, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', ?, ?)`,
     )
     .bind(
       params.id,
@@ -210,6 +212,7 @@ export async function insertGame(
       params.playTimeMax ?? null,
       params.note ?? null,
       params.bggId ?? null,
+      params.bgaSlug ?? null,
       now,
       now,
     )
@@ -251,6 +254,7 @@ const UPDATABLE_GAME_COLUMNS: Record<keyof UpdateGameRequest, string> = {
   playTimeMax: "play_time_max",
   note: "note",
   bggId: "bgg_id",
+  bgaSlug: "bga_slug",
   status: "status",
   ownerId: "owner_id",
 };
