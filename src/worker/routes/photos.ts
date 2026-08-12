@@ -1,9 +1,8 @@
+import { MAX_PHOTO_BYTES, MAX_PHOTOS_PER_GAME } from "../../shared/constants";
 import { countPhotosByGameId, deletePhotoById, getPhotoWithGameOwner, insertGamePhoto } from "../db";
 import type { AppContext } from "./games";
 import { canEditGame, findGameOrNull } from "./games";
 
-const MAX_PHOTOS_PER_GAME = 5;
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const JPEG_MAGIC_BYTES = [0xff, 0xd8, 0xff];
 
 async function isJpeg(blob: Blob): Promise<boolean> {

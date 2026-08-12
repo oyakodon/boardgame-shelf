@@ -1,10 +1,11 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { CreateGameRequest, Member } from "../../shared/types";
-import { createGame, getGame, listMembers, updateGame } from "../api";
+import { createGame, deletePhoto, getGame, listMembers, updateGame, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
 import { extractBgaSlug } from "../bga";
 import { extractBggId } from "../bgg";
+import { EMPTY_PHOTO_VALUE, PhotoPicker, type PhotoPickerValue } from "../components/PhotoPicker";
 
 type Mode = "create" | "edit";
 
@@ -51,6 +52,10 @@ export function GameFormPage({ mode }: { mode: Mode }) {
   const [loading, setLoading] = useState(mode === "edit");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photoValue, setPhotoValue] = useState<PhotoPickerValue>(EMPTY_PHOTO_VALUE);
+  // 新規登録で「ゲームは作成できたが写真のアップロードに失敗した」場合、
+  // 保存をやり直してもゲームを二重に作らないよう作成済みのIDを覚えておく
+  const [createdGameId, setCreatedGameId] = useState<string | null>(null);
 
   useEffect(() => {
     listMembers()
@@ -94,6 +99,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           bggId: game.bggId !== null ? String(game.bggId) : "",
           bgaSlug: game.bgaSlug ?? "",
         });
+        setPhotoValue({ kept: game.photos, removedIds: [], added: [] });
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "取得に失敗しました"))
       .finally(() => setLoading(false));
@@ -101,6 +107,20 @@ export function GameFormPage({ mode }: { mode: Mode }) {
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // 写真の削除と追加を順に反映する。1件終えるごとに状態から取り除くので、
+  // 途中で失敗して保存をやり直しても、成功済みの分をやり直すことはない
+  async function persistPhotoChanges(gameId: string) {
+    for (const photoId of photoValue.removedIds) {
+      await deletePhoto(photoId);
+      setPhotoValue((prev) => ({ ...prev, removedIds: prev.removedIds.filter((x) => x !== photoId) }));
+    }
+    for (const pending of photoValue.added) {
+      await uploadGamePhoto(gameId, pending.blob);
+      URL.revokeObjectURL(pending.previewUrl);
+      setPhotoValue((prev) => ({ ...prev, added: prev.added.filter((a) => a.key !== pending.key) }));
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -155,8 +175,19 @@ export function GameFormPage({ mode }: { mode: Mode }) {
 
     setSubmitting(true);
     try {
-      const game = mode === "edit" && id ? await updateGame(id, body) : await createGame(body);
-      navigate(`/games/${game.id}`);
+      let gameId: string;
+      if (mode === "edit" && id) {
+        gameId = (await updateGame(id, body)).id;
+      } else if (createdGameId) {
+        // 前回の保存でゲームは作成済み。作り直さず内容を反映するだけにする
+        gameId = (await updateGame(createdGameId, body)).id;
+      } else {
+        gameId = (await createGame(body)).id;
+        setCreatedGameId(gameId);
+      }
+
+      await persistPhotoChanges(gameId);
+      navigate(`/games/${gameId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存に失敗しました");
     } finally {
@@ -181,6 +212,13 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       <h1 className="mt-2 mb-4 text-xl font-bold text-gray-900">{mode === "edit" ? "ゲームを編集" : "ゲームを登録"}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <span className="block text-sm font-medium text-gray-700">写真</span>
+          <div className="mt-1">
+            <PhotoPicker value={photoValue} onChange={setPhotoValue} />
+          </div>
+        </div>
+
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">
             タイトル<span className="text-red-600">*</span>
@@ -306,7 +344,6 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           />
           <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
         </div>
-
         <div>
           <label htmlFor="note" className="block text-sm font-medium text-gray-700">
             コメント
