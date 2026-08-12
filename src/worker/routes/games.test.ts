@@ -199,6 +199,31 @@ describe("PATCH /api/games/:id", () => {
     expect(((await patchRes.json()) as Game).note).toBe("拡張入り");
   });
 
+  it("allows updating bgaSlug to a valid slug", async () => {
+    const { cookie } = await createUser("owner-bga-3");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ bgaSlug: "reefgardens" }),
+    });
+
+    expect(patchRes.status).toBe(200);
+    expect(((await patchRes.json()) as Game).bgaSlug).toBe("reefgardens");
+  });
+
+  it("returns 400 when updating bgaSlug to a value outside the allowed slug format", async () => {
+    const { cookie } = await createUser("owner-bga-4");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ bgaSlug: "https://boardgamearena.com/gamepanel?game=x" }),
+    });
+
+    expect(patchRes.status).toBe(400);
+  });
+
   it("returns 400 when updating only maxPlayers creates minPlayers > maxPlayers against the existing value", async () => {
     const { cookie } = await createUser("owner-7b");
     const game = await createGameViaApi(cookie, { title: "人数チェック用", minPlayers: 3, maxPlayers: 5 });
