@@ -39,6 +39,7 @@ CREATE TABLE games (
   play_time_max INTEGER,
   note          TEXT,                   -- 所有者のコメント。「重ゲー」「拡張入り」など
   bgg_id        INTEGER,                -- 手入力の補助情報。任意
+  bga_slug      TEXT,                   -- BGA(ボードゲームアリーナ)のゲームスラッグ。任意
   status        TEXT NOT NULL DEFAULT 'available',  -- 'available' | 'retired'
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL,

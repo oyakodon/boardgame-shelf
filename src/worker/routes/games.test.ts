@@ -117,6 +117,30 @@ describe("POST /api/games", () => {
     expect(res.status).toBe(400);
   });
 
+  it("creates a game with a valid BGA slug", async () => {
+    const { cookie } = await createUser("owner-bga-1");
+
+    const res = await authedFetch("/api/games", cookie, {
+      method: "POST",
+      body: JSON.stringify({ ...validGame, bgaSlug: "raceforthegalaxy" }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Game;
+    expect(body.bgaSlug).toBe("raceforthegalaxy");
+  });
+
+  it("returns 400 when bgaSlug contains characters outside the allowed slug format", async () => {
+    const { cookie } = await createUser("owner-bga-2");
+
+    const res = await authedFetch("/api/games", cookie, {
+      method: "POST",
+      body: JSON.stringify({ ...validGame, bgaSlug: "https://boardgamearena.com/gamepanel?game=x" }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
   it("returns 403 when Origin does not match", async () => {
     const { cookie } = await createUser("owner-4");
 
@@ -173,6 +197,31 @@ describe("PATCH /api/games/:id", () => {
 
     expect(patchRes.status).toBe(200);
     expect(((await patchRes.json()) as Game).note).toBe("拡張入り");
+  });
+
+  it("allows updating bgaSlug to a valid slug", async () => {
+    const { cookie } = await createUser("owner-bga-3");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ bgaSlug: "reefgardens" }),
+    });
+
+    expect(patchRes.status).toBe(200);
+    expect(((await patchRes.json()) as Game).bgaSlug).toBe("reefgardens");
+  });
+
+  it("returns 400 when updating bgaSlug to a value outside the allowed slug format", async () => {
+    const { cookie } = await createUser("owner-bga-4");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ bgaSlug: "https://boardgamearena.com/gamepanel?game=x" }),
+    });
+
+    expect(patchRes.status).toBe(400);
   });
 
   it("returns 400 when updating only maxPlayers creates minPlayers > maxPlayers against the existing value", async () => {

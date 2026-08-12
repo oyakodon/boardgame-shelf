@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import type { GameDetail, Tag } from "../../shared/types";
 import { addGameTag, deleteGame, deletePhoto, getGame, listTags, removeGameTag, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
+import { bgaUrl } from "../bga";
 import { playersLabel } from "../game-format";
 import { resizeImageToJpeg } from "../image-resize";
 
@@ -263,10 +264,25 @@ export function GameDetailPage() {
               <a
                 href={`https://boardgamegeek.com/boardgame/${game.bggId}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-indigo-600 hover:underline"
               >
                 #{game.bggId}
+              </a>
+            </dd>
+          </div>
+        )}
+        {game.bgaSlug !== null && (
+          <div className="flex gap-2">
+            <dt className="w-20 text-gray-500">BGA</dt>
+            <dd className="text-gray-900">
+              <a
+                href={bgaUrl(game.bgaSlug)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 hover:underline"
+              >
+                {game.bgaSlug}
               </a>
             </dd>
           </div>
