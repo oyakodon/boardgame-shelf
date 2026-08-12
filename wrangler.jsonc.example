@@ -9,6 +9,9 @@
       "custom_domain": true
     }
   ],
+  "dev": {
+    "host": "localhost:8787"
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
