@@ -190,6 +190,17 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       <h1 className="mt-2 mb-4 text-xl font-bold text-gray-900">{mode === "edit" ? "ゲームを編集" : "ゲームを登録"}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {mode === "edit" && id ? (
+          <div>
+            <span className="block text-sm font-medium text-gray-700">写真</span>
+            <div className="mt-1">
+              <PhotoManager gameId={id} photos={photos} onPhotosChange={setPhotos} />
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">写真は保存後に追加できます</p>
+        )}
+
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">
             タイトル<span className="text-red-600">*</span>
@@ -315,18 +326,6 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           />
           <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
         </div>
-
-        {mode === "edit" && id ? (
-          <div>
-            <span className="block text-sm font-medium text-gray-700">写真</span>
-            <div className="mt-1">
-              <PhotoManager gameId={id} photos={photos} onPhotosChange={setPhotos} />
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-gray-500">写真は保存後に追加できます</p>
-        )}
-
         <div>
           <label htmlFor="note" className="block text-sm font-medium text-gray-700">
             コメント
