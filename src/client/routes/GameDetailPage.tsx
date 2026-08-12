@@ -172,7 +172,12 @@ export function GameDetailPage() {
       <div className="mt-3 flex gap-2 overflow-x-auto">
         {game.photos.map((photo, i) => (
           <div key={photo.id} className="relative shrink-0">
-            <button type="button" onClick={() => setViewerIndex(i)} className="block">
+            <button
+              type="button"
+              onClick={() => setViewerIndex(i)}
+              aria-label={`${i + 1}枚目の写真を拡大表示`}
+              className="block"
+            >
               <img src={photo.url} alt="" className="h-32 w-32 rounded-lg border border-gray-200 object-cover" />
             </button>
             {canEdit && (
