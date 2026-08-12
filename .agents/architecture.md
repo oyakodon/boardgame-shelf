@@ -147,6 +147,8 @@ React + Vite + TypeScriptのSPA。画面数とフォームの多さから、素�
 
 再符号化にJPEGを使うのはWebPではなくSafari(iOS Safari含む)対策である。`canvas.toBlob()`/`toDataURL()`でのWebPエンコードはSafariが対応しておらず、会場でスマートフォンから開く使い方が主のこのサイトでは無視できない。JPEGなら主要ブラウザすべてでエンコードできる。
 
+写真の追加・削除は登録・編集フォーム(`/games/new`、`/games/:id/edit`)でのみ行う。新規登録は保存後に`/games/:id/edit`へ遷移させ、そのまま写真を追加できるようにする(保存前はゲームのIDが無く、写真をどのゲームに紐付けるか決まらないため)。詳細ページ(`/games/:id`)は写真を含めて閲覧専用とし、拡大表示のみ行う。
+
 ## Discordへの通知
 
 サーバーのチャンネルにIncoming Webhookを作り、そのURLを`wrangler secret put`でシークレットとして登録する。

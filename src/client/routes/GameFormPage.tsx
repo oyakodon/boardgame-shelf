@@ -1,10 +1,11 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { CreateGameRequest, Member } from "../../shared/types";
+import type { CreateGameRequest, GamePhoto, Member } from "../../shared/types";
 import { createGame, getGame, listMembers, updateGame } from "../api";
 import { useAuth } from "../auth-context";
 import { extractBgaSlug } from "../bga";
 import { extractBggId } from "../bgg";
+import { PhotoManager } from "../components/PhotoManager";
 
 type Mode = "create" | "edit";
 
@@ -51,6 +52,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
   const [loading, setLoading] = useState(mode === "edit");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<GamePhoto[]>([]);
 
   useEffect(() => {
     listMembers()
@@ -94,6 +96,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           bggId: game.bggId !== null ? String(game.bggId) : "",
           bgaSlug: game.bgaSlug ?? "",
         });
+        setPhotos(game.photos);
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "取得に失敗しました"))
       .finally(() => setLoading(false));
@@ -155,8 +158,14 @@ export function GameFormPage({ mode }: { mode: Mode }) {
 
     setSubmitting(true);
     try {
-      const game = mode === "edit" && id ? await updateGame(id, body) : await createGame(body);
-      navigate(`/games/${game.id}`);
+      if (mode === "edit" && id) {
+        const game = await updateGame(id, body);
+        navigate(`/games/${game.id}`);
+      } else {
+        const game = await createGame(body);
+        // 作成直後は写真を追加できるよう編集画面へ遷移する(詳細ページは閲覧専用のため)
+        navigate(`/games/${game.id}/edit`, { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存に失敗しました");
     } finally {
@@ -306,6 +315,17 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           />
           <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
         </div>
+
+        {mode === "edit" && id ? (
+          <div>
+            <span className="block text-sm font-medium text-gray-700">写真</span>
+            <div className="mt-1">
+              <PhotoManager gameId={id} photos={photos} onPhotosChange={setPhotos} />
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">写真は保存後に追加できます</p>
+        )}
 
         <div>
           <label htmlFor="note" className="block text-sm font-medium text-gray-700">
