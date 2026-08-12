@@ -4,6 +4,7 @@ import type { GameDetail, Tag } from "../../shared/types";
 import { addGameTag, deleteGame, deletePhoto, getGame, listTags, removeGameTag, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
 import { bgaUrl } from "../bga";
+import { PhotoViewer } from "../components/PhotoViewer";
 import { playersLabel } from "../game-format";
 import { resizeImageToJpeg } from "../image-resize";
 
@@ -32,6 +33,7 @@ export function GameDetailPage() {
   const [tagInput, setTagInput] = useState("");
   const [tagError, setTagError] = useState<string | null>(null);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -168,9 +170,16 @@ export function GameDetailPage() {
       <h1 className="mt-2 text-2xl font-bold text-gray-900">{game.title}</h1>
 
       <div className="mt-3 flex gap-2 overflow-x-auto">
-        {game.photos.map((photo) => (
+        {game.photos.map((photo, i) => (
           <div key={photo.id} className="relative shrink-0">
-            <img src={photo.url} alt="" className="h-32 w-32 rounded-lg border border-gray-200 object-cover" />
+            <button
+              type="button"
+              onClick={() => setViewerIndex(i)}
+              aria-label={`${i + 1}枚目の写真を拡大表示`}
+              className="block"
+            >
+              <img src={photo.url} alt="" className="h-32 w-32 rounded-lg border border-gray-200 object-cover" />
+            </button>
             {canEdit && (
               <button
                 type="button"
@@ -331,6 +340,13 @@ export function GameDetailPage() {
           </button>
         </div>
       )}
+
+      <PhotoViewer
+        photos={game.photos}
+        index={viewerIndex}
+        onClose={() => setViewerIndex(null)}
+        onIndexChange={setViewerIndex}
+      />
     </main>
   );
 }
