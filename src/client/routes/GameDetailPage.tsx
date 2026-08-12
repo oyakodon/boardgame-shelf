@@ -264,7 +264,7 @@ export function GameDetailPage() {
               <a
                 href={`https://boardgamegeek.com/boardgame/${game.bggId}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-indigo-600 hover:underline"
               >
                 #{game.bggId}
@@ -279,7 +279,7 @@ export function GameDetailPage() {
               <a
                 href={bgaUrl(game.bgaSlug)}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-indigo-600 hover:underline"
               >
                 {game.bgaSlug}
