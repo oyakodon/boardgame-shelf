@@ -12,7 +12,7 @@ import type {
 
 async function readErrorMessage(res: Response): Promise<string> {
   const body = (await res.json().catch(() => null)) as ErrorResponse | null;
-  return body?.error ?? `request failed: ${res.status}`;
+  return body?.error ?? `request failed: ${res.status} ${res.url}`;
 }
 
 export function errorMessage(err: unknown, fallback: string): string {
