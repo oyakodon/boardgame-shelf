@@ -117,6 +117,28 @@ describe("POST /api/games", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 when title exceeds 100 characters", async () => {
+    const { cookie } = await createUser("owner-3b");
+
+    const res = await authedFetch("/api/games", cookie, {
+      method: "POST",
+      body: JSON.stringify({ title: "あ".repeat(101), minPlayers: 2 }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when note exceeds 2000 characters", async () => {
+    const { cookie } = await createUser("owner-3c");
+
+    const res = await authedFetch("/api/games", cookie, {
+      method: "POST",
+      body: JSON.stringify({ title: "備考長すぎゲーム", minPlayers: 2, note: "あ".repeat(2001) }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
   it("creates a game with a valid BGA slug", async () => {
     const { cookie } = await createUser("owner-bga-1");
 

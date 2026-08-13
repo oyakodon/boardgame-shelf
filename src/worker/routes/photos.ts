@@ -23,7 +23,7 @@ export async function uploadGamePhoto(c: AppContext) {
 
   const count = await countPhotosByGameId(c.env.DB, game.id);
   if (count >= MAX_PHOTOS_PER_GAME) {
-    return c.json({ error: "invalid request body" }, 400);
+    return c.json({ error: `写真は${MAX_PHOTOS_PER_GAME}枚までです` }, 400);
   }
 
   const formData = await c.req.formData().catch(() => null);
@@ -32,10 +32,10 @@ export async function uploadGamePhoto(c: AppContext) {
     return c.json({ error: "invalid request body" }, 400);
   }
   if (file.size > MAX_PHOTO_BYTES) {
-    return c.json({ error: "invalid request body" }, 400);
+    return c.json({ error: `写真は${MAX_PHOTO_BYTES / 1024 / 1024}MBまでです` }, 400);
   }
   if (file.type !== "image/jpeg" || !(await isJpeg(file))) {
-    return c.json({ error: "invalid request body" }, 400);
+    return c.json({ error: "JPEG形式の写真のみアップロードできます" }, 400);
   }
 
   const id = crypto.randomUUID();

@@ -22,12 +22,19 @@ export function canEditGame(game: Pick<Game, "ownerId" | "registeredById">, user
   return game.ownerId === user.id || game.registeredById === user.id || user.role === "admin";
 }
 
+const MAX_TITLE_LENGTH = 100;
+const MAX_NOTE_LENGTH = 2000;
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isValidTitle(value: unknown): value is string {
+  return isNonEmptyString(value) && value.trim().length <= MAX_TITLE_LENGTH;
+}
+
 function isOptionalString(value: unknown): boolean {
-  return value === undefined || value === null || typeof value === "string";
+  return value === undefined || value === null || (typeof value === "string" && value.length <= MAX_NOTE_LENGTH);
 }
 
 function isPositiveInt(value: unknown): value is number {
@@ -60,7 +67,7 @@ function parseCreateGameRequest(body: unknown): CreateGameRequest | null {
     return null;
   }
   const b = body as Record<string, unknown>;
-  if (!isNonEmptyString(b.title)) {
+  if (!isValidTitle(b.title)) {
     return null;
   }
   if (!isPositiveInt(b.minPlayers)) {
@@ -103,7 +110,7 @@ function parseUpdateGameRequest(body: unknown): UpdateGameRequest | null {
   }
   const b = body as Record<string, unknown>;
 
-  if (b.title !== undefined && !isNonEmptyString(b.title)) {
+  if (b.title !== undefined && !isValidTitle(b.title)) {
     return null;
   }
   if (b.minPlayers !== undefined && !isPositiveInt(b.minPlayers)) {
