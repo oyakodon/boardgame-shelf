@@ -6,7 +6,7 @@
 
 ```jsonc
 {
-  "d1_databases": [{ "binding": "DB", "database_name": "boardgame-shelf" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "boardgame-shelf", "database_id": "..." }],
   "r2_buckets":   [{ "binding": "BUCKET", "bucket_name": "boardgame-shelf-photos" }],
   "vars": {
     "DISCORD_CLIENT_ID": "...",
