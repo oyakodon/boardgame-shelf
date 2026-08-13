@@ -19,6 +19,17 @@ export function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
+// credentials:"include"とエラー処理の反復をここに集約する。204(ボディ無し)は
+// undefinedを返す。404→nullや401→nullのような呼び出し元固有のステータス処理は
+// ここに混ぜず、各関数で個別に行う
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(path, { ...init, credentials: "include" });
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+  return res.status === 204 ? (undefined as T) : res.json();
+}
+
 export async function fetchMe(): Promise<User | null> {
   const res = await fetch("/api/me", { credentials: "include" });
   if (res.status === 401) {
@@ -31,26 +42,15 @@ export async function fetchMe(): Promise<User | null> {
 }
 
 export async function logout(): Promise<void> {
-  const res = await fetch("/auth/logout", { method: "POST", credentials: "include" });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
+  await request<void>("/auth/logout", { method: "POST" });
 }
 
 export async function listMembers(): Promise<Member[]> {
-  const res = await fetch("/api/users", { credentials: "include" });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  return res.json();
+  return request<Member[]>("/api/users");
 }
 
 export async function listGames(): Promise<Game[]> {
-  const res = await fetch("/api/games", { credentials: "include" });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  return res.json();
+  return request<Game[]>("/api/games");
 }
 
 export async function getGame(id: string): Promise<GameDetail | null> {
@@ -65,83 +65,47 @@ export async function getGame(id: string): Promise<GameDetail | null> {
 }
 
 export async function createGame(body: CreateGameRequest): Promise<Game> {
-  const res = await fetch("/api/games", {
+  return request<Game>("/api/games", {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  return res.json();
 }
 
 export async function updateGame(id: string, body: UpdateGameRequest): Promise<Game> {
-  const res = await fetch(`/api/games/${id}`, {
+  return request<Game>(`/api/games/${id}`, {
     method: "PATCH",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  return res.json();
 }
 
 export async function deleteGame(id: string): Promise<void> {
-  const res = await fetch(`/api/games/${id}`, { method: "DELETE", credentials: "include" });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
+  await request<void>(`/api/games/${id}`, { method: "DELETE" });
 }
 
 export async function uploadGamePhoto(gameId: string, blob: Blob): Promise<GamePhoto> {
   const form = new FormData();
   form.set("photo", blob, "photo.jpg");
-  const res = await fetch(`/api/games/${gameId}/photos`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  return res.json();
+  return request<GamePhoto>(`/api/games/${gameId}/photos`, { method: "POST", body: form });
 }
 
 export async function deletePhoto(photoId: string): Promise<void> {
-  const res = await fetch(`/api/photos/${photoId}`, { method: "DELETE", credentials: "include" });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
+  await request<void>(`/api/photos/${photoId}`, { method: "DELETE" });
 }
 
 export async function listTags(): Promise<Tag[]> {
-  const res = await fetch("/api/tags", { credentials: "include" });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  return res.json();
+  return request<Tag[]>("/api/tags");
 }
 
 export async function addGameTag(gameId: string, name: string): Promise<Tag[]> {
-  const res = await fetch(`/api/games/${gameId}/tags`, {
+  return request<Tag[]>(`/api/games/${gameId}/tags`, {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-  return res.json();
 }
 
 export async function removeGameTag(gameId: string, tagId: string): Promise<void> {
-  const res = await fetch(`/api/games/${gameId}/tags/${tagId}`, { method: "DELETE", credentials: "include" });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
+  await request<void>(`/api/games/${gameId}/tags/${tagId}`, { method: "DELETE" });
 }

@@ -1,6 +1,5 @@
-import type { Context } from "hono";
+import type { AppContext } from "../context";
 import { createSession, deleteSession, upsertUserFromDiscordLogin } from "../db";
-import type { Bindings } from "../env";
 import {
   buildAuthorizeUrl,
   DiscordApiError,
@@ -12,7 +11,6 @@ import {
   generateState,
   isGuildMember,
 } from "./discord";
-import type { Variables } from "./middleware";
 import {
   clearOAuthStateCookie,
   clearSessionCookie,
@@ -24,8 +22,6 @@ import {
   setOAuthStateCookie,
   setSessionCookie,
 } from "./session";
-
-type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>;
 
 function redirectUri(c: AppContext): string {
   return new URL("/auth/callback", c.req.url).toString();

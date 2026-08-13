@@ -102,7 +102,7 @@ export async function fetchCurrentUser(accessToken: string): Promise<DiscordUser
   return res.json();
 }
 
-// 対象サーバーに参加していなければ404が返る({.agents/auth.md}参照)
+// 対象サーバーに参加していなければ404が返る
 export async function isGuildMember(accessToken: string, guildId: string): Promise<boolean> {
   const res = await fetch(`${DISCORD_API_BASE}/users/@me/guilds/${guildId}/member`, {
     headers: { Authorization: `Bearer ${accessToken}` },

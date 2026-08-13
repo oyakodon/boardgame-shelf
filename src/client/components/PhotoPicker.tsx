@@ -13,9 +13,9 @@ export type PendingPhoto = {
 
 // フォームが保持する写真の状態。フォーム自身は保存されるまでサーバーに触らない
 export type PhotoPickerValue = {
-  kept: GamePhoto[]; // 既存の写真のうち残すもの
-  removedIds: string[]; // 既存の写真のうち削除するもの
-  added: PendingPhoto[]; // 新しく選ばれた、まだアップロードしていない写真
+  kept: GamePhoto[];
+  removedIds: string[];
+  added: PendingPhoto[];
 };
 
 export const EMPTY_PHOTO_VALUE: PhotoPickerValue = { kept: [], removedIds: [], added: [] };

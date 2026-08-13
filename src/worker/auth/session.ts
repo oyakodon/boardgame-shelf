@@ -14,7 +14,7 @@ export type OAuthState = {
 };
 
 // __Host-プレフィックスはSecure必須のため、httpのwrangler devでは保存できない。
-// そのためhttps以外ではプレフィックス無しのCookieにフォールバックする(.agents/auth.md参照)。
+// そのためhttps以外ではプレフィックス無しのCookieにフォールバックする。
 function isSecureRequest(c: Context): boolean {
   return new URL(c.req.url).protocol === "https:";
 }
@@ -61,7 +61,6 @@ export function clearSessionCookie(c: Context): void {
   deleteCookie(c, COOKIE_NAME, secure ? { prefix: "host" } : { path: "/" });
 }
 
-// /auth/loginから/auth/callbackまでの短命なCookie。stateとPKCEのcode_verifierを載せる。
 export function setOAuthStateCookie(c: Context, value: OAuthState): void {
   const secure = isSecureRequest(c);
   setCookie(c, OAUTH_STATE_COOKIE_NAME, JSON.stringify(value), {

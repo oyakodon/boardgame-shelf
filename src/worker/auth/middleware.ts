@@ -13,7 +13,7 @@ export type Variables = {
 
 type AuthContext = Context<{ Bindings: Bindings; Variables: Variables }>;
 
-// セッションCookie、またはAuthorization: Bearer <ADMIN_API_TOKEN>のいずれかで認証する(.agents/auth.md参照)。
+// セッションCookie、またはAuthorization: Bearer <ADMIN_API_TOKEN>のいずれかで認証する。
 export async function requireAuth(c: AuthContext, next: Next) {
   const authHeader = c.req.header("Authorization");
   if (authHeader) {
@@ -61,7 +61,7 @@ async function authenticateWithSession(c: AuthContext, next: Next) {
 const MUTATING_METHODS = new Set(["POST", "PATCH", "DELETE"]);
 
 // 更新系(POST/PATCH/DELETE)でOriginヘッダの一致を要求する。
-// Bearerトークン認証はCookieを使わずCSRFの対象にならないため対象外(.agents/auth.md参照)。
+// Bearerトークン認証はCookieを使わずCSRFの対象にならないため対象外。
 export function requireSameOrigin(c: AuthContext, next: Next) {
   if (!MUTATING_METHODS.has(c.req.method) || c.get("authMethod") === "adminToken") {
     return next();

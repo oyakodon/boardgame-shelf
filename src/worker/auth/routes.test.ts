@@ -196,4 +196,61 @@ describe("GET /api/me and POST /auth/logout", () => {
     const afterLogoutRes = await SELF.fetch("https://example.com/api/me", { headers: { Cookie: cookie } });
     expect(afterLogoutRes.status).toBe(401);
   });
+
+  it("returns 401 for an expired session", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    await db
+      .prepare(
+        `INSERT INTO users (id, username, display_name, avatar_url, role, created_at, updated_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind("user-expired", "carol", "Carol", null, "member", now, now, now)
+      .run();
+
+    const rawSessionId = "test-expired-session-id";
+    const idHash = await hashSessionId(rawSessionId);
+    await db
+      .prepare("INSERT INTO sessions (id_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
+      .bind(idHash, "user-expired", now - 1, now - 100)
+      .run();
+
+    const res = await SELF.fetch("https://example.com/api/me", {
+      headers: { Cookie: `__Host-session=${rawSessionId}` },
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("extends the session and sets a new cookie when nearing expiry", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    await db
+      .prepare(
+        `INSERT INTO users (id, username, display_name, avatar_url, role, created_at, updated_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind("user-extend", "dave", "Dave", null, "member", now, now, now)
+      .run();
+
+    const rawSessionId = "test-extend-session-id";
+    const idHash = await hashSessionId(rawSessionId);
+    // 残り1日(延長しきい値の7日未満)の期限で作成し、自動延長を発火させる
+    const nearExpiry = now + 24 * 60 * 60;
+    await db
+      .prepare("INSERT INTO sessions (id_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
+      .bind(idHash, "user-extend", nearExpiry, now)
+      .run();
+
+    const res = await SELF.fetch("https://example.com/api/me", {
+      headers: { Cookie: `__Host-session=${rawSessionId}` },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.getSetCookie().some((c) => c.startsWith("__Host-session="))).toBe(true);
+
+    const row = await db
+      .prepare("SELECT expires_at FROM sessions WHERE id_hash = ?")
+      .bind(idHash)
+      .first<{ expires_at: number }>();
+    expect(row?.expires_at).toBeGreaterThan(nearExpiry);
+  });
 });

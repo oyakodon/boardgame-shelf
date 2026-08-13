@@ -1,44 +1,7 @@
-import { env, SELF } from "cloudflare:test";
+import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { Game } from "../../shared/types";
-import { hashSessionId } from "../auth/session";
-import type { Bindings } from "../env";
-
-const db = (env as unknown as Bindings).DB;
-
-const ORIGIN = "https://example.com";
-
-async function createUser(id: string, role: "member" | "admin" = "member") {
-  const now = Math.floor(Date.now() / 1000);
-  await db
-    .prepare(
-      `INSERT INTO users (id, username, display_name, avatar_url, role, created_at, updated_at, last_login_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(id, id, id, null, role, now, now, now)
-    .run();
-
-  const rawSessionId = `session-${id}`;
-  const idHash = await hashSessionId(rawSessionId);
-  await db
-    .prepare("INSERT INTO sessions (id_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
-    .bind(idHash, id, now + 1000, now)
-    .run();
-
-  return { cookie: `__Host-session=${rawSessionId}` };
-}
-
-function authedFetch(path: string, cookie: string, init: RequestInit = {}) {
-  const headers = new Headers(init.headers);
-  headers.set("Cookie", cookie);
-  if (init.method && init.method !== "GET") {
-    headers.set("Origin", ORIGIN);
-  }
-  if (init.body) {
-    headers.set("Content-Type", "application/json");
-  }
-  return SELF.fetch(`${ORIGIN}${path}`, { ...init, headers });
-}
+import { authedFetch, createUser, ORIGIN } from "../test-helpers";
 
 const validGame = {
   title: "カタン",
@@ -295,6 +258,56 @@ describe("PATCH /api/games/:id", () => {
 
     expect(patchRes.status).toBe(200);
     expect(((await patchRes.json()) as Game).status).toBe("retired");
+  });
+
+  it("returns 400 for an invalid status value", async () => {
+    const { cookie } = await createUser("owner-status-1");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "archived" }),
+    });
+
+    expect(patchRes.status).toBe(400);
+  });
+
+  it("clears note when explicitly set to null", async () => {
+    const { cookie } = await createUser("owner-note-1");
+    const game = await createGameViaApi(cookie, { ...validGame, note: "既存のコメント" });
+    expect(game.note).toBe("既存のコメント");
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ note: null }),
+    });
+
+    expect(patchRes.status).toBe(200);
+    expect(((await patchRes.json()) as Game).note).toBeNull();
+  });
+
+  it("returns 200 unchanged for an empty JSON object body ({})", async () => {
+    const { cookie } = await createUser("owner-empty-patch-1");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({}),
+    });
+
+    expect(patchRes.status).toBe(200);
+    const updated = (await patchRes.json()) as Game;
+    expect(updated.title).toBe(game.title);
+    expect(updated.minPlayers).toBe(game.minPlayers);
+  });
+
+  it("returns 400 when the request body is omitted entirely", async () => {
+    const { cookie } = await createUser("owner-omitted-patch-1");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, { method: "PATCH" });
+
+    expect(patchRes.status).toBe(400);
   });
 });
 
