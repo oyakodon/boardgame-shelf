@@ -24,7 +24,7 @@ export function PhotoViewer({ photos, index, onClose, onIndexChange }: PhotoView
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || index === null || !photo) return;
+    if (!isOpen || index === null) return;
 
     function handleKeyDown(e: KeyboardEvent) {
       if (index === null) return;
@@ -36,12 +36,13 @@ export function PhotoViewer({ photos, index, onClose, onIndexChange }: PhotoView
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, index, photo, photos.length, onIndexChange]);
+  }, [isOpen, index, photos.length, onIndexChange]);
 
   return (
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      aria-label="写真の拡大表示"
       className="m-0 h-dvh max-h-none w-dvw max-w-none border-0 bg-transparent p-0 backdrop:bg-black/90"
     >
       {isOpen && (
