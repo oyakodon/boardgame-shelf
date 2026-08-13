@@ -1,7 +1,7 @@
 import { MAX_PHOTO_BYTES, MAX_PHOTOS_PER_GAME } from "../../shared/constants";
+import { canEditGame, findGameOrNull } from "../authz";
+import type { AppContext } from "../context";
 import { countPhotosByGameId, deletePhotoById, getPhotoWithGameOwner, insertGamePhoto } from "../db";
-import type { AppContext } from "./games";
-import { canEditGame, findGameOrNull } from "./games";
 
 const JPEG_MAGIC_BYTES = [0xff, 0xd8, 0xff];
 

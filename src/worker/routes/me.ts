@@ -1,7 +1,5 @@
-import type { Context } from "hono";
-import type { Variables } from "../auth/middleware";
-import type { Bindings } from "../env";
+import type { AppContext } from "../context";
 
-export function me(c: Context<{ Bindings: Bindings; Variables: Variables }>) {
+export function me(c: AppContext) {
   return c.json(c.get("user"));
 }

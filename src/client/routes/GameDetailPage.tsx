@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { canEditGame } from "../../shared/authz";
 import type { GameDetail, Tag } from "../../shared/types";
 import { addGameTag, deleteGame, errorMessage, getGame, listTags, removeGameTag } from "../api";
 import { useAuth } from "../auth-context";
@@ -77,8 +78,7 @@ export function GameDetailPage() {
     );
   }
 
-  // 所有者だけでなく登録者(代理登録した人)も編集できる
-  const canEdit = user?.id === game.ownerId || user?.id === game.registeredById || user?.role === "admin";
+  const canEdit = canEditGame(game, user);
   const time = playTimeLabel(game);
 
   async function handleAddTag(e: React.FormEvent) {

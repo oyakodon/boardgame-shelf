@@ -1,9 +1,8 @@
-import type { Context } from "hono";
-import type { Bindings } from "../env";
+import type { AppContext } from "../context";
 
 const IMG_PREFIX = "/img/";
 
-export async function serveImage(c: Context<{ Bindings: Bindings }>) {
+export async function serveImage(c: AppContext) {
   const key = c.req.path.slice(IMG_PREFIX.length);
   if (!key) {
     return c.json({ error: "not found" }, 404);

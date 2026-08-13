@@ -1,8 +1,7 @@
-import type { Context } from "hono";
-import type { CreateGameRequest, Game, GameStatus, UpdateGameRequest, User } from "../../shared/types";
-import type { Variables } from "../auth/middleware";
+import type { CreateGameRequest, GameStatus, UpdateGameRequest } from "../../shared/types";
+import { canEditGame, findGameOrNull } from "../authz";
+import type { AppContext } from "../context";
 import {
-  getGameById,
   insertGame,
   listActiveGames,
   listMembers,
@@ -12,15 +11,6 @@ import {
   updateGame,
   userExists,
 } from "../db";
-import type { Bindings } from "../env";
-
-export type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>;
-
-// 所有者だけでなく登録者も編集できる。他人の持ち物を代理登録した人が、
-// 自分の入力ミスをadmin待ちにならず直せるようにするため(.agents/architecture.md参照)。
-export function canEditGame(game: Pick<Game, "ownerId" | "registeredById">, user: User): boolean {
-  return game.ownerId === user.id || game.registeredById === user.id || user.role === "admin";
-}
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_NOTE_LENGTH = 2000;
@@ -176,11 +166,6 @@ export async function createGame(c: AppContext) {
     now,
   );
   return c.json(game, 201);
-}
-
-export async function findGameOrNull(c: AppContext) {
-  const id = c.req.param("id");
-  return id ? getGameById(c.env.DB, id) : null;
 }
 
 export async function getGame(c: AppContext) {

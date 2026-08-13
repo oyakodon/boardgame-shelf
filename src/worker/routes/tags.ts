@@ -1,6 +1,6 @@
+import { findGameOrNull } from "../authz";
+import type { AppContext } from "../context";
 import { attachTagToGame, detachTagFromGame, findOrCreateTagByName, listAllTags, listTagsForGame } from "../db";
-import type { AppContext } from "./games";
-import { findGameOrNull } from "./games";
 
 const MAX_TAG_NAME_LENGTH = 30;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: 制御文字を弾くために意図的に使用する
