@@ -286,7 +286,7 @@ describe("PATCH /api/games/:id", () => {
     expect(((await patchRes.json()) as Game).note).toBeNull();
   });
 
-  it("returns 200 unchanged for an empty patch body", async () => {
+  it("returns 200 unchanged for an empty JSON object body ({})", async () => {
     const { cookie } = await createUser("owner-empty-patch-1");
     const game = await createGameViaApi(cookie);
 
@@ -299,6 +299,15 @@ describe("PATCH /api/games/:id", () => {
     const updated = (await patchRes.json()) as Game;
     expect(updated.title).toBe(game.title);
     expect(updated.minPlayers).toBe(game.minPlayers);
+  });
+
+  it("returns 400 when the request body is omitted entirely", async () => {
+    const { cookie } = await createUser("owner-omitted-patch-1");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, { method: "PATCH" });
+
+    expect(patchRes.status).toBe(400);
   });
 });
 
