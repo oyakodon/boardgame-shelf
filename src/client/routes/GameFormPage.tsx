@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { CreateGameRequest, Member } from "../../shared/types";
-import { createGame, deletePhoto, getGame, listMembers, updateGame, uploadGamePhoto } from "../api";
+import { createGame, deletePhoto, errorMessage, getGame, listMembers, updateGame, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
 import { extractBgaSlug } from "../bga";
 import { extractBggId } from "../bgg";
@@ -60,9 +60,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
   useEffect(() => {
     listMembers()
       .then(setMembers)
-      .catch((err: unknown) =>
-        setMembersError(err instanceof Error ? err.message : "メンバー一覧の取得に失敗しました"),
-      );
+      .catch((err: unknown) => setMembersError(errorMessage(err, "メンバー一覧の取得に失敗しました")));
   }, []);
 
   // メンバー一覧の取得に失敗しても、最低限「自分」だけは所有者に選べるようにする
@@ -101,7 +99,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
         });
         setPhotoValue({ kept: game.photos, removedIds: [], added: [] });
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "取得に失敗しました"))
+      .catch((err: unknown) => setError(errorMessage(err, "取得に失敗しました")))
       .finally(() => setLoading(false));
   }, [mode, id]);
 
@@ -189,7 +187,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
       await persistPhotoChanges(gameId);
       navigate(`/games/${gameId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存に失敗しました");
+      setError(errorMessage(err, "保存に失敗しました"));
     } finally {
       setSubmitting(false);
     }
