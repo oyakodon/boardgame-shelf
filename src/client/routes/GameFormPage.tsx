@@ -226,6 +226,8 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           <input
             id="title"
             type="text"
+            required
+            aria-required="true"
             value={form.title}
             onChange={(e) => updateField("title", e.target.value)}
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
@@ -238,6 +240,8 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           </label>
           <select
             id="ownerId"
+            required
+            aria-required="true"
             value={form.ownerId}
             onChange={(e) => updateField("ownerId", e.target.value)}
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
@@ -266,6 +270,8 @@ export function GameFormPage({ mode }: { mode: Mode }) {
               type="number"
               inputMode="numeric"
               min={1}
+              required
+              aria-required="true"
               value={form.minPlayers}
               onChange={(e) => updateField("minPlayers", e.target.value)}
               className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
