@@ -56,4 +56,4 @@ Playwrightは依存には含めず、検証用のスクラッチディレクト�
 GitHub Actionsは`ci.yml`と`deploy.yml`の2ワークフローに分かれる。
 
 - `ci.yml`：push・PR時に`check` → `typecheck` → `test` → `build`を実行する
-- `deploy.yml`：`ci.yml`がmainブランチで成功した後に`workflow_run`で起動し、D1マイグレーション適用と`wrangler deploy`を自動で行う。forkからのPRでの誤発火を防ぐため`head_repository.full_name`を確認する
+- `deploy.yml`：`ci.yml`がmainブランチへの**push**を起点として成功した後に`workflow_run`で起動し、D1マイグレーション適用と`wrangler deploy`を自動で行う。forkからのPRでの誤発火を防ぐため、`workflow_run`イベントが`push`由来であることと`head_repository.full_name`の両方を確認する(詳細は`.agents/operations.md`)
