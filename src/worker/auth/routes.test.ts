@@ -14,7 +14,7 @@ function extractCookie(res: Response, name: string): string {
   return match.split(";")[0];
 }
 
-function mockDiscordFetch(guildStatus: number) {
+function mockDiscordFetch(guildStatus: number, meStatus = 200) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
@@ -26,10 +26,12 @@ function mockDiscordFetch(guildStatus: number) {
         return new Response(guildStatus === 200 ? "{}" : "not found", { status: guildStatus });
       }
       if (url.includes("/users/@me")) {
-        return new Response(
-          JSON.stringify({ id: "discord-user-1", username: "alice", global_name: "Alice", avatar: null }),
-          { status: 200 },
-        );
+        return meStatus === 200
+          ? new Response(
+              JSON.stringify({ id: "discord-user-1", username: "alice", global_name: "Alice", avatar: null }),
+              { status: 200 },
+            )
+          : new Response("internal error", { status: meStatus });
       }
       throw new Error(`unexpected fetch to ${url}`);
     }),
@@ -90,6 +92,38 @@ describe("GET /auth/callback", () => {
       "fetch",
       vi.fn(async () => new Response("internal error", { status: 500 })),
     );
+
+    const res = await SELF.fetch(`https://example.com/auth/callback?code=abc&state=${encodeURIComponent(state)}`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/?error=login_failed");
+  });
+
+  it("redirects to /?error=login_failed when the guild membership check fails", async () => {
+    const loginRes = await SELF.fetch("https://example.com/auth/login", { redirect: "manual" });
+    const stateCookie = extractCookie(loginRes, "__Host-oauth_state");
+    const state = new URL(loginRes.headers.get("location") ?? "").searchParams.get("state") ?? "";
+
+    mockDiscordFetch(500);
+
+    const res = await SELF.fetch(`https://example.com/auth/callback?code=abc&state=${encodeURIComponent(state)}`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/?error=login_failed");
+  });
+
+  it("redirects to /?error=login_failed when fetching the current user fails", async () => {
+    const loginRes = await SELF.fetch("https://example.com/auth/login", { redirect: "manual" });
+    const stateCookie = extractCookie(loginRes, "__Host-oauth_state");
+    const state = new URL(loginRes.headers.get("location") ?? "").searchParams.get("state") ?? "";
+
+    mockDiscordFetch(200, 500);
 
     const res = await SELF.fetch(`https://example.com/auth/callback?code=abc&state=${encodeURIComponent(state)}`, {
       headers: { Cookie: stateCookie },
