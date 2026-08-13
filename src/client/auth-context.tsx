@@ -7,7 +7,7 @@ type Status = "loading" | "authenticated" | "unauthenticated";
 type AuthContextValue = {
   status: Status;
   user: User | null;
-  refresh: () => void;
+  refresh: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -16,17 +16,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUser] = useState<User | null>(null);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setStatus("loading");
-    fetchMe()
-      .then((fetchedUser) => {
-        setUser(fetchedUser);
-        setStatus(fetchedUser ? "authenticated" : "unauthenticated");
-      })
-      .catch(() => {
-        setUser(null);
-        setStatus("unauthenticated");
-      });
+    try {
+      const fetchedUser = await fetchMe();
+      setUser(fetchedUser);
+      setStatus(fetchedUser ? "authenticated" : "unauthenticated");
+    } catch {
+      setUser(null);
+      setStatus("unauthenticated");
+    }
   }, []);
 
   useEffect(() => {

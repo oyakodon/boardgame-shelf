@@ -24,7 +24,7 @@ export function RequireAuth() {
         navigate(target, { replace: true });
       }
     }
-  }, [status, location, navigate]);
+  }, [status, location.pathname, location.search, navigate]);
 
   if (status !== "authenticated") {
     return (
