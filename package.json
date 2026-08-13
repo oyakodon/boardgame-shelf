@@ -8,8 +8,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
     "check": "biome check .",
-    "pretest": "node scripts/ensure-wrangler-config.mjs",
-    "test": "vitest run --passWithNoTests",
+    "test": "node scripts/ensure-wrangler-config.mjs && vitest run",
     "predev:worker": "node scripts/ensure-wrangler-config.mjs",
     "dev:worker": "vite build && wrangler dev"
   },
