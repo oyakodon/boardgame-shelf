@@ -1,5 +1,4 @@
 import type { GamePhoto } from "../../shared/types";
-import { imgUrl } from "./games";
 
 type GamePhotoRow = {
   id: string;
@@ -15,7 +14,7 @@ const GAME_PHOTO_COLUMNS = "id, r2_key, width, height, sort_order, created_at";
 function toGamePhoto(row: GamePhotoRow): GamePhoto {
   return {
     id: row.id,
-    url: imgUrl(row.r2_key) as string,
+    url: `/img/${row.r2_key}`,
     width: row.width,
     height: row.height,
     sortOrder: row.sort_order,
