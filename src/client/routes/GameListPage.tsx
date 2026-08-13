@@ -95,6 +95,7 @@ export function GameListPage() {
           value={criteria.keyword}
           onChange={(e) => updateParam("q", e.target.value || null)}
           placeholder="タイトル・コメントで検索"
+          aria-label="タイトル・コメントで検索"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
         />
 
@@ -155,7 +156,11 @@ export function GameListPage() {
         )}
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
       {!error && !games && <p className="text-gray-600">読み込み中...</p>}
       {games && games.length === 0 && <p className="text-gray-600">まだゲームが登録されていません。</p>}
       {games && games.length > 0 && filtered.length === 0 && (
