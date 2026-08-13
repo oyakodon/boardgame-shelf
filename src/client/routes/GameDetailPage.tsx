@@ -35,6 +35,9 @@ export function GameDetailPage() {
       return;
     }
     setActionError(null);
+    setTagError(null);
+    setError(null);
+    setGame(undefined);
     let cancelled = false;
     getGame(id)
       .then((fetchedGame) => {
