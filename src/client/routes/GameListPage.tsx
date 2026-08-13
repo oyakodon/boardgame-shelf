@@ -95,6 +95,7 @@ export function GameListPage() {
           value={criteria.keyword}
           onChange={(e) => updateParam("q", e.target.value || null)}
           placeholder="タイトル・コメントで検索"
+          aria-label="タイトル・コメントで検索"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
         />
 
