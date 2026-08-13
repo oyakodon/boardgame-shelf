@@ -5,24 +5,26 @@ API(`/api`配下)と認証系(`/auth`配下)はJSONで受け答えする。画�
 
 ## エンドポイント一覧
 
-| メソッドとパス | 用途 | 認証 |
-| --- | --- | --- |
-| `GET /auth/login` | Discord認可画面へリダイレクト | 不要 |
-| `GET /auth/callback` | OAuth2コールバック。セッション発行後トップへリダイレクト | 不要 |
-| `POST /auth/logout` | セッション破棄 | 要 |
-| `GET /api/health` | 死活監視用。`200 text/plain "ok"`固定 | 不要 |
-| `GET /api/me` | ログイン中のユーザー情報。未ログインなら401 | 要 |
-| `GET /api/users` | メンバー一覧(`id`と`displayName`のみ)。所有者の選択と絞り込みに使う | 要 |
-| `GET /api/games` | ゲーム一覧 | 要 |
-| `POST /api/games` | ゲーム登録。`ownerId`未指定なら登録者自身が所有者になる | 要 |
-| `GET /api/games/:id` | ゲーム詳細。写真とタグの一覧を含む | 要 |
-| `PATCH /api/games/:id` | ゲーム更新。所有者・登録者・adminのみ。`ownerId`で所有者を付け替えられる | 要 |
-| `DELETE /api/games/:id` | ゲーム削除(論理削除)。所有者・登録者・adminのみ | 要 |
-| `POST /api/games/:id/photos` | 写真の追加 | 要 |
-| `DELETE /api/photos/:id` | 写真の削除 | 要 |
-| `GET /api/tags` | タグ一覧 | 要 |
-| `POST /api/games/:id/tags` | ゲームへのタグ付与。未登録のタグ名なら新規作成する | 要 |
-| `DELETE /api/games/:id/tags/:tagId` | ゲームからタグを外す | 要 |
+| メソッドとパス | 用途 | 認証 | 成功時レスポンス |
+| --- | --- | --- | --- |
+| `GET /auth/login` | Discord認可画面へリダイレクト | 不要 | `302` リダイレクト |
+| `GET /auth/callback` | OAuth2コールバック。セッション発行後トップへリダイレクト | 不要 | `302` `/`へリダイレクト |
+| `POST /auth/logout` | セッション破棄 | 要 | `204` ボディ無し |
+| `GET /api/health` | 死活監視用 | 不要 | `200 text/plain "ok"`固定 |
+| `GET /api/me` | ログイン中のユーザー情報。未ログインなら401 | 要 | `200` + `User` |
+| `GET /api/users` | メンバー一覧(`id`と`displayName`のみ)。所有者の選択と絞り込みに使う | 要 | `200` + `Member[]` |
+| `GET /api/games` | ゲーム一覧 | 要 | `200` + `Game[]` |
+| `POST /api/games` | ゲーム登録。`ownerId`未指定なら登録者自身が所有者になる | 要 | `201` + `Game` |
+| `GET /api/games/:id` | ゲーム詳細。写真とタグの一覧を含む | 要 | `200` + `GameDetail` |
+| `PATCH /api/games/:id` | ゲーム更新。所有者・登録者・adminのみ。`ownerId`で所有者を付け替えられる | 要 | `200` + `Game` |
+| `DELETE /api/games/:id` | ゲーム削除(論理削除)。所有者・登録者・adminのみ | 要 | `204` ボディ無し |
+| `POST /api/games/:id/photos` | 写真の追加 | 要 | `201` + `GamePhoto` |
+| `DELETE /api/photos/:id` | 写真の削除 | 要 | `204` ボディ無し |
+| `GET /api/tags` | タグ一覧 | 要 | `200` + `Tag[]` |
+| `POST /api/games/:id/tags` | ゲームへのタグ付与。未登録のタグ名なら新規作成する | 要 | `200` + そのゲームの`Tag[]` |
+| `DELETE /api/games/:id/tags/:tagId` | ゲームからタグを外す | 要 | `204` ボディ無し |
+
+`GET /auth/callback`は失敗時、state不一致なら`400 {"error": "invalid oauth state"}`、対象サーバー未参加なら`403 {"error": "not a guild member"}`、それ以外のDiscord API障害(トークン交換・ユーザー取得の失敗)なら`302`で`/?error=login_failed`へリダイレクトする。ブラウザのフルページ遷移でこの応答がそのままユーザーに見える。
 
 `GET /api/games`と`GET /api/games/:id`は同じ`Game`型を返す(差は詳細だけが持つ`photos`と`tags`)。一覧の`Game`にもフィルタ計算に使う`tagNames`とサムネイル1枚分のURLを含める。最大でも1000件程度なので、ページングを入れず全件を返し、キーワード・人数・所有者・タグの絞り込みはすべてクライアント側で行う。往復が減って体感が速くなり、実装も減る。件数が増えて重くなったら`(created_at, id)`を鍵とするカーソルページングに切り替える。
 
