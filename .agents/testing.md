@@ -20,15 +20,18 @@ Discord側とのやり取り(トークン交換、guilds/membersの呼び出し)
 npm test
 ```
 
+`npm test`は`node scripts/ensure-wrangler-config.mjs && vitest run`を実行する。`vitest.config.ts`が`wrangler.jsonc`の存在を前提とするため、`vitest`を直接叩く前に必ず`wrangler.jsonc`を生成する連結スクリプトにしてある(`wrangler.jsonc`が既に存在すれば`ensure-wrangler-config.mjs`は何もしない)。
+
 ## 手動検証(実装時に整備)
 
 ### 1. ビルドと起動
 
 ```bash
 npm install
-npm run build     # vite build (クライアント)
-npx wrangler dev   # ローカルでWorker起動。--local でD1/R2もローカルエミュレーション
+npm run dev:worker   # vite build && wrangler dev。ビルド済みクライアント+APIを1プロセスで配信
 ```
+
+クライアント側のみHMRしながら見た目を素早く確認したい場合は`npm run dev`(`vite`のみ)を使うが、`/api/*`等へのプロキシは無いためログインを伴う画面は動かない(`.agents/architecture.md`参照)。
 
 ### 2. API直叩き
 
