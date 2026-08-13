@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import type { Member } from "../../shared/types";
 import { createGame, deletePhoto, errorMessage, getGame, listMembers, updateGame, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
+import { NumberField } from "../components/NumberField";
 import { EMPTY_PHOTO_VALUE, PhotoPicker, type PhotoPickerValue } from "../components/PhotoPicker";
+import { TextField } from "../components/TextField";
 import { EMPTY_FORM, type FormState, gameToFormState, validateGameForm } from "../game-form";
 
 type Mode = "create" | "edit";
@@ -153,20 +155,13 @@ export function GameFormPage({ mode }: { mode: Mode }) {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-              タイトル<span className="text-red-600">*</span>
-            </label>
-            <input
-              id="title"
-              type="text"
-              required
-              aria-required="true"
-              value={form.title}
-              onChange={(e) => updateField("title", e.target.value)}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
-            />
-          </div>
+          <TextField
+            id="title"
+            label="タイトル"
+            required
+            value={form.title}
+            onChange={(value) => updateField("title", value)}
+          />
 
           <div>
             <label htmlFor="ownerId" className="block text-sm font-medium text-gray-700">
@@ -195,99 +190,54 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           </div>
 
           <div className="flex gap-3">
-            <div className="flex-1">
-              <label htmlFor="minPlayers" className="block text-sm font-medium text-gray-700">
-                最小人数<span className="text-red-600">*</span>
-              </label>
-              <input
-                id="minPlayers"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                required
-                aria-required="true"
-                value={form.minPlayers}
-                onChange={(e) => updateField("minPlayers", e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
-              />
-            </div>
-            <div className="flex-1">
-              <label htmlFor="maxPlayers" className="block text-sm font-medium text-gray-700">
-                最大人数
-              </label>
-              <input
-                id="maxPlayers"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={form.maxPlayers}
-                onChange={(e) => updateField("maxPlayers", e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
-              />
-              <p className="mt-1 text-xs text-gray-500">空欄なら上限なし</p>
-            </div>
+            <NumberField
+              id="minPlayers"
+              label="最小人数"
+              required
+              value={form.minPlayers}
+              onChange={(value) => updateField("minPlayers", value)}
+            />
+            <NumberField
+              id="maxPlayers"
+              label="最大人数"
+              value={form.maxPlayers}
+              onChange={(value) => updateField("maxPlayers", value)}
+              helperText="空欄なら上限なし"
+            />
           </div>
 
           <div className="flex gap-3">
-            <div className="flex-1">
-              <label htmlFor="playTimeMin" className="block text-sm font-medium text-gray-700">
-                プレイ時間(分・最小)
-              </label>
-              <input
-                id="playTimeMin"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={form.playTimeMin}
-                onChange={(e) => updateField("playTimeMin", e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
-              />
-            </div>
-            <div className="flex-1">
-              <label htmlFor="playTimeMax" className="block text-sm font-medium text-gray-700">
-                プレイ時間(分・最大)
-              </label>
-              <input
-                id="playTimeMax"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={form.playTimeMax}
-                onChange={(e) => updateField("playTimeMax", e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
-              />
-            </div>
+            <NumberField
+              id="playTimeMin"
+              label="プレイ時間(分・最小)"
+              value={form.playTimeMin}
+              onChange={(value) => updateField("playTimeMin", value)}
+            />
+            <NumberField
+              id="playTimeMax"
+              label="プレイ時間(分・最大)"
+              value={form.playTimeMax}
+              onChange={(value) => updateField("playTimeMax", value)}
+            />
           </div>
 
-          <div>
-            <label htmlFor="bggId" className="block text-sm font-medium text-gray-700">
-              BGG ID
-            </label>
-            <input
-              id="bggId"
-              type="text"
-              value={form.bggId}
-              onChange={(e) => updateField("bggId", e.target.value)}
-              placeholder="13 または https://boardgamegeek.com/boardgame/13/catan"
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
-            />
-            <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
-          </div>
+          <TextField
+            id="bggId"
+            label="BGG ID"
+            value={form.bggId}
+            onChange={(value) => updateField("bggId", value)}
+            placeholder="13 または https://boardgamegeek.com/boardgame/13/catan"
+            helperText="ゲームページのURLを貼り付けてもIDだけ保存されます"
+          />
 
-          <div>
-            <label htmlFor="bgaSlug" className="block text-sm font-medium text-gray-700">
-              BGA(ボードゲームアリーナ)
-            </label>
-            <input
-              id="bgaSlug"
-              type="text"
-              value={form.bgaSlug}
-              onChange={(e) => updateField("bgaSlug", e.target.value)}
-              placeholder="raceforthegalaxy または https://boardgamearena.com/gamepanel?game=raceforthegalaxy"
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2.5 text-base"
-            />
-            <p className="mt-1 text-xs text-gray-500">ゲームページのURLを貼り付けてもIDだけ保存されます</p>
-          </div>
+          <TextField
+            id="bgaSlug"
+            label="BGA(ボードゲームアリーナ)"
+            value={form.bgaSlug}
+            onChange={(value) => updateField("bgaSlug", value)}
+            placeholder="raceforthegalaxy または https://boardgamearena.com/gamepanel?game=raceforthegalaxy"
+            helperText="ゲームページのURLを貼り付けてもIDだけ保存されます"
+          />
           <div>
             <label htmlFor="note" className="block text-sm font-medium text-gray-700">
               コメント
