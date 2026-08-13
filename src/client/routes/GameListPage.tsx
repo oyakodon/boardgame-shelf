@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { Game } from "../../shared/types";
 import { errorMessage, listGames } from "../api";
-import { filterGames, type GameFilterCriteria } from "../game-filter";
+import { filterGames, type GameFilterCriteria, MAX_PLAYER_FILTER } from "../game-filter";
 import { playersLabel } from "../game-format";
 
-const PLAYER_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+const PLAYER_OPTIONS = Array.from({ length: MAX_PLAYER_FILTER }, (_, i) => i + 1);
 
 function parseCriteria(params: URLSearchParams): GameFilterCriteria {
   const playersRaw = params.get("players");

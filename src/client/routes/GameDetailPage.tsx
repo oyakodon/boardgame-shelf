@@ -27,6 +27,7 @@ export function GameDetailPage() {
   const [tagInput, setTagInput] = useState("");
   const [tagError, setTagError] = useState<string | null>(null);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [tagBusy, setTagBusy] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -34,12 +35,24 @@ export function GameDetailPage() {
       return;
     }
     setActionError(null);
+    setTagError(null);
+    setError(null);
+    setGame(undefined);
+    let cancelled = false;
     getGame(id)
-      .then(setGame)
-      .catch((err: unknown) => setError(errorMessage(err, "取得に失敗しました")));
+      .then((fetchedGame) => {
+        if (!cancelled) setGame(fetchedGame);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(errorMessage(err, "取得に失敗しました"));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
+    // タグ候補は入力補助でしかなく、取得に失敗してもタグ入力自体は続行できるため無視する(意図的)
     listTags()
       .then(setAvailableTags)
       .catch(() => {});
@@ -81,21 +94,25 @@ export function GameDetailPage() {
   async function handleAddTag(e: React.FormEvent) {
     e.preventDefault();
     const name = tagInput.trim();
-    if (!name || !game) {
+    if (!name || !game || tagBusy) {
       return;
     }
     setTagError(null);
+    setTagBusy(true);
     try {
       const tags = await addGameTag(game.id, name);
       setGame((prev) => (prev ? { ...prev, tags, tagNames: tags.map((t) => t.name) } : prev));
       setTagInput("");
     } catch (err) {
       setTagError(errorMessage(err, "タグの追加に失敗しました"));
+    } finally {
+      setTagBusy(false);
     }
   }
 
   function handleRemoveTag(tagId: string) {
-    if (!game) return;
+    if (!game || tagBusy) return;
+    setTagBusy(true);
     removeGameTag(game.id, tagId)
       .then(() => {
         setGame((prev) => {
@@ -104,7 +121,8 @@ export function GameDetailPage() {
           return { ...prev, tags, tagNames: tags.map((t) => t.name) };
         });
       })
-      .catch((err: unknown) => setTagError(errorMessage(err, "タグの削除に失敗しました")));
+      .catch((err: unknown) => setTagError(errorMessage(err, "タグの削除に失敗しました")))
+      .finally(() => setTagBusy(false));
   }
 
   return (
@@ -141,8 +159,9 @@ export function GameDetailPage() {
             <button
               type="button"
               onClick={() => handleRemoveTag(tag.id)}
+              disabled={tagBusy}
               aria-label={`タグ「${tag.name}」を削除`}
-              className="text-gray-400 active:text-gray-700"
+              className="text-gray-400 active:text-gray-700 disabled:opacity-50"
             >
               ×
             </button>
@@ -164,7 +183,7 @@ export function GameDetailPage() {
           </datalist>
           <button
             type="submit"
-            disabled={tagInput.trim().length === 0}
+            disabled={tagInput.trim().length === 0 || tagBusy}
             className="min-h-8 rounded-full border border-gray-300 px-3 text-sm text-gray-700 active:bg-gray-100 disabled:opacity-50"
           >
             追加
