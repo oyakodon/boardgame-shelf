@@ -81,6 +81,25 @@ describe("GET /auth/callback", () => {
     expect(await res.json()).toEqual({ error: "invalid oauth state" });
   });
 
+  it("redirects to /?error=login_failed when the Discord token exchange fails", async () => {
+    const loginRes = await SELF.fetch("https://example.com/auth/login", { redirect: "manual" });
+    const stateCookie = extractCookie(loginRes, "__Host-oauth_state");
+    const state = new URL(loginRes.headers.get("location") ?? "").searchParams.get("state") ?? "";
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("internal error", { status: 500 })),
+    );
+
+    const res = await SELF.fetch(`https://example.com/auth/callback?code=abc&state=${encodeURIComponent(state)}`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/?error=login_failed");
+  });
+
   it("returns 403 when the user is not a member of the target guild", async () => {
     const loginRes = await SELF.fetch("https://example.com/auth/login", { redirect: "manual" });
     const stateCookie = extractCookie(loginRes, "__Host-oauth_state");
