@@ -1,46 +1,12 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { CreateGameRequest, Member } from "../../shared/types";
+import type { Member } from "../../shared/types";
 import { createGame, deletePhoto, errorMessage, getGame, listMembers, updateGame, uploadGamePhoto } from "../api";
 import { useAuth } from "../auth-context";
-import { extractBgaSlug } from "../bga";
-import { extractBggId } from "../bgg";
 import { EMPTY_PHOTO_VALUE, PhotoPicker, type PhotoPickerValue } from "../components/PhotoPicker";
+import { EMPTY_FORM, type FormState, gameToFormState, validateGameForm } from "../game-form";
 
 type Mode = "create" | "edit";
-
-type FormState = {
-  title: string;
-  ownerId: string;
-  minPlayers: string;
-  maxPlayers: string;
-  playTimeMin: string;
-  playTimeMax: string;
-  note: string;
-  bggId: string;
-  bgaSlug: string;
-};
-
-const EMPTY_FORM: FormState = {
-  title: "",
-  ownerId: "",
-  minPlayers: "",
-  maxPlayers: "",
-  playTimeMin: "",
-  playTimeMax: "",
-  note: "",
-  bggId: "",
-  bgaSlug: "",
-};
-
-function toOptionalInt(value: string): number | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const n = Number(trimmed);
-  return Number.isInteger(n) ? n : Number.NaN;
-}
 
 export function GameFormPage({ mode }: { mode: Mode }) {
   const { id } = useParams<{ id: string }>();
@@ -86,17 +52,7 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           setError("ゲームが見つかりませんでした。");
           return;
         }
-        setForm({
-          title: game.title,
-          ownerId: game.ownerId,
-          minPlayers: String(game.minPlayers),
-          maxPlayers: game.maxPlayers !== null ? String(game.maxPlayers) : "",
-          playTimeMin: game.playTimeMin !== null ? String(game.playTimeMin) : "",
-          playTimeMax: game.playTimeMax !== null ? String(game.playTimeMax) : "",
-          note: game.note ?? "",
-          bggId: game.bggId !== null ? String(game.bggId) : "",
-          bgaSlug: game.bgaSlug ?? "",
-        });
+        setForm(gameToFormState(game));
         setPhotoValue({ kept: game.photos, removedIds: [], added: [] });
       })
       .catch((err: unknown) => setError(errorMessage(err, "取得に失敗しました")))
@@ -125,51 +81,12 @@ export function GameFormPage({ mode }: { mode: Mode }) {
     e.preventDefault();
     setError(null);
 
-    const minPlayers = toOptionalInt(form.minPlayers);
-    const maxPlayers = toOptionalInt(form.maxPlayers);
-    const playTimeMin = toOptionalInt(form.playTimeMin);
-    const playTimeMax = toOptionalInt(form.playTimeMax);
-    const bggId = form.bggId.trim() ? extractBggId(form.bggId) : null;
-    const bgaSlug = form.bgaSlug.trim() ? extractBgaSlug(form.bgaSlug) : null;
-
-    if (!form.title.trim()) {
-      setError("タイトルを入力してください。");
+    const result = validateGameForm(form);
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
-    if (minPlayers === null || Number.isNaN(minPlayers) || minPlayers < 1) {
-      setError("最小人数は1以上の整数で入力してください。");
-      return;
-    }
-    if ([maxPlayers, playTimeMin, playTimeMax].some((n) => n !== null && (Number.isNaN(n) || n < 1))) {
-      setError("数値項目は1以上の整数で入力してください。");
-      return;
-    }
-    if (form.bggId.trim() && bggId === null) {
-      setError("BGGのIDまたはURLを正しく入力してください。");
-      return;
-    }
-    if (form.bgaSlug.trim() && bgaSlug === null) {
-      setError("BGAのIDまたはURLを正しく入力してください。");
-      return;
-    }
-    if (maxPlayers !== null && minPlayers > maxPlayers) {
-      setError("最小人数は最大人数以下にしてください。");
-      return;
-    }
-
-    const body: CreateGameRequest = {
-      title: form.title.trim(),
-      minPlayers,
-      maxPlayers,
-      playTimeMin,
-      playTimeMax,
-      note: form.note.trim() || null,
-      bggId,
-      bgaSlug,
-    };
-    if (form.ownerId) {
-      body.ownerId = form.ownerId;
-    }
+    const body = result.body;
 
     setSubmitting(true);
     try {
