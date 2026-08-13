@@ -112,6 +112,11 @@ describe("validateGameForm", () => {
     expect(result).toEqual({ ok: false, error: "最小人数は最大人数以下にしてください。" });
   });
 
+  it("rejects playTimeMax less than playTimeMin", () => {
+    const result = validateGameForm(makeForm({ playTimeMin: "60", playTimeMax: "30" }));
+    expect(result).toEqual({ ok: false, error: "プレイ時間は最小が最大以下になるようにしてください。" });
+  });
+
   it("rejects an invalid BGG id/URL", () => {
     const result = validateGameForm(makeForm({ bggId: "not-a-valid-id-or-url" }));
     expect(result).toEqual({ ok: false, error: "BGGのIDまたはURLを正しく入力してください。" });

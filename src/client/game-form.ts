@@ -77,6 +77,9 @@ export function validateGameForm(form: FormState): ValidateGameFormResult {
   if (maxPlayers !== null && minPlayers > maxPlayers) {
     return { ok: false, error: "最小人数は最大人数以下にしてください。" };
   }
+  if (playTimeMin !== null && playTimeMax !== null && playTimeMin > playTimeMax) {
+    return { ok: false, error: "プレイ時間は最小が最大以下になるようにしてください。" };
+  }
 
   const body: CreateGameRequest = {
     title: form.title.trim(),
