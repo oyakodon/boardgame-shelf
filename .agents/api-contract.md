@@ -39,7 +39,7 @@ API(`/api`配下)と認証系(`/auth`配下)はJSONで受け答えする。画�
 ## 写真アップロードの流れ
 
 1. ブラウザ側でCanvasを使い、長辺1600pxまで縮小してJPEGへ再符号化する
-2. `POST /api/games/:id/photos`へ送る。1枚2MBまで、1ゲーム5枚まで
+2. `POST /api/games/:id/photos`へ送る。枚数・サイズの上限は`src/shared/constants.ts`が正(現在値は`.agents/architecture.md`の決定事項を参照)
 3. Workerが先頭バイトを見て画像形式を確認し、R2へ`put`する
 4. `game_photos`に行を追加する
 

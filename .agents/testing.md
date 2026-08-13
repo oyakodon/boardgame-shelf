@@ -14,7 +14,7 @@
 
 Discord側とのやり取り(トークン交換、guilds/membersの呼び出し)は`fetch`をモックして、成功/404(未参加)/エラー時の分岐を検証する。
 
-人数絞り込みの判定(`min_players <= N AND (max_players IS NULL OR max_players >= N)`。`max_players`未入力=上限なし)はサーバー側ではなくクライアント側の純粋ロジック(`src/client/game-filter.ts`)であり、`src/client/*.test.ts`(`bgg`/`bga`/`game-filter`/`game-form`/`game-format`)として検証する。`vitest.config.ts`に`test.include`の指定が無いため、これらのクライアント側テストもサーバー側と同じ`cloudflareTest`プール(Miniflare上)で実行されている。純粋関数のみを対象にしている今は問題ないが、DOMやReactコンポーネントのテストを書く場合は`projects`でプールを分ける必要がある。Reactコンポーネント自体のテストは当面未整備の想定で、`@testing-library/react`の導入は画面数が増えて壊れやすくなったら検討する。
+人数絞り込みの判定(条件式は`.agents/data-model.md`参照)はサーバー側ではなくクライアント側の純粋ロジック(`src/client/game-filter.ts`)であり、`src/client/*.test.ts`(`bgg`/`bga`/`game-filter`/`game-form`/`game-format`)として検証する。`vitest.config.ts`に`test.include`の指定が無いため、これらのクライアント側テストもサーバー側と同じ`cloudflareTest`プール(Miniflare上)で実行されている。純粋関数のみを対象にしている今は問題ないが、DOMやReactコンポーネントのテストを書く場合は`projects`でプールを分ける必要がある。Reactコンポーネント自体のテストは当面未整備の想定で、`@testing-library/react`の導入は画面数が増えて壊れやすくなったら検討する。
 
 ```bash
 npm test
