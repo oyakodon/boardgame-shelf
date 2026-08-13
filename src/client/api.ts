@@ -10,13 +10,22 @@ import type {
   User,
 } from "../shared/types";
 
+async function readErrorMessage(res: Response): Promise<string> {
+  const body = (await res.json().catch(() => null)) as ErrorResponse | null;
+  return body?.error ?? `request failed: ${res.status}`;
+}
+
+export function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
 export async function fetchMe(): Promise<User | null> {
   const res = await fetch("/api/me", { credentials: "include" });
   if (res.status === 401) {
     return null;
   }
   if (!res.ok) {
-    throw new Error(`failed to fetch /api/me: ${res.status}`);
+    throw new Error(await readErrorMessage(res));
   }
   return res.json();
 }
@@ -24,13 +33,8 @@ export async function fetchMe(): Promise<User | null> {
 export async function logout(): Promise<void> {
   const res = await fetch("/auth/logout", { method: "POST", credentials: "include" });
   if (!res.ok) {
-    throw new Error(`failed to logout: ${res.status}`);
+    throw new Error(await readErrorMessage(res));
   }
-}
-
-async function readErrorMessage(res: Response): Promise<string> {
-  const body = (await res.json().catch(() => null)) as ErrorResponse | null;
-  return body?.error ?? `request failed: ${res.status}`;
 }
 
 export async function listMembers(): Promise<Member[]> {
