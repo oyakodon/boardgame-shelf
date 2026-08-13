@@ -3,6 +3,7 @@ import { createSession, deleteSession, upsertUserFromDiscordLogin } from "../db"
 import type { Bindings } from "../env";
 import {
   buildAuthorizeUrl,
+  DiscordApiError,
   discordAvatarUrl,
   exchangeCodeForToken,
   fetchCurrentUser,
@@ -55,20 +56,29 @@ export async function callback(c: AppContext) {
     return c.json({ error: "invalid oauth state" }, 400);
   }
 
-  const accessToken = await exchangeCodeForToken({
-    clientId: c.env.DISCORD_CLIENT_ID,
-    clientSecret: c.env.DISCORD_CLIENT_SECRET,
-    redirectUri: redirectUri(c),
-    code,
-    codeVerifier: saved.codeVerifier,
-  });
+  let discordUser: Awaited<ReturnType<typeof fetchCurrentUser>>;
+  try {
+    const accessToken = await exchangeCodeForToken({
+      clientId: c.env.DISCORD_CLIENT_ID,
+      clientSecret: c.env.DISCORD_CLIENT_SECRET,
+      redirectUri: redirectUri(c),
+      code,
+      codeVerifier: saved.codeVerifier,
+    });
 
-  const isMember = await isGuildMember(accessToken, c.env.DISCORD_GUILD_ID);
-  if (!isMember) {
-    return c.json({ error: "not a guild member" }, 403);
+    const isMember = await isGuildMember(accessToken, c.env.DISCORD_GUILD_ID);
+    if (!isMember) {
+      return c.json({ error: "not a guild member" }, 403);
+    }
+    discordUser = await fetchCurrentUser(accessToken);
+  } catch (err) {
+    if (err instanceof DiscordApiError) {
+      console.error(err);
+      return c.redirect("/?error=login_failed");
+    }
+    throw err;
   }
 
-  const discordUser = await fetchCurrentUser(accessToken);
   const adminIds = c.env.ADMIN_DISCORD_IDS.split(",")
     .map((id) => id.trim())
     .filter(Boolean);

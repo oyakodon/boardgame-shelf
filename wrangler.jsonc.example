@@ -3,6 +3,9 @@
   "name": "boardgame-shelf",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-08-08",
+  "observability": {
+    "enabled": true
+  },
   "routes": [
     {
       "pattern": "game.oykdn.com",
