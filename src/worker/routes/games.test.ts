@@ -259,6 +259,47 @@ describe("PATCH /api/games/:id", () => {
     expect(patchRes.status).toBe(200);
     expect(((await patchRes.json()) as Game).status).toBe("retired");
   });
+
+  it("returns 400 for an invalid status value", async () => {
+    const { cookie } = await createUser("owner-status-1");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "archived" }),
+    });
+
+    expect(patchRes.status).toBe(400);
+  });
+
+  it("clears note when explicitly set to null", async () => {
+    const { cookie } = await createUser("owner-note-1");
+    const game = await createGameViaApi(cookie, { ...validGame, note: "既存のコメント" });
+    expect(game.note).toBe("既存のコメント");
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({ note: null }),
+    });
+
+    expect(patchRes.status).toBe(200);
+    expect(((await patchRes.json()) as Game).note).toBeNull();
+  });
+
+  it("returns 200 unchanged for an empty patch body", async () => {
+    const { cookie } = await createUser("owner-empty-patch-1");
+    const game = await createGameViaApi(cookie);
+
+    const patchRes = await authedFetch(`/api/games/${game.id}`, cookie, {
+      method: "PATCH",
+      body: JSON.stringify({}),
+    });
+
+    expect(patchRes.status).toBe(200);
+    const updated = (await patchRes.json()) as Game;
+    expect(updated.title).toBe(game.title);
+    expect(updated.minPlayers).toBe(game.minPlayers);
+  });
 });
 
 describe("DELETE /api/games/:id", () => {
