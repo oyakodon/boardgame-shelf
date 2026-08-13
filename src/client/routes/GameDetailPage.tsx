@@ -33,6 +33,7 @@ export function GameDetailPage() {
     if (!id) {
       return;
     }
+    setActionError(null);
     getGame(id)
       .then(setGame)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "取得に失敗しました"));
