@@ -51,4 +51,7 @@ Playwrightは依存には含めず、検証用のスクラッチディレクト�
 
 ## CI
 
-GitHub Actionsで`check` → `typecheck` → `test` → `build`の構成にする。`wrangler deploy`の自動化は今回のスコープに含めない(`.agents/architecture.md`の明示的な決定事項を参照)。
+GitHub Actionsは`ci.yml`と`deploy.yml`の2ワークフローに分かれる。
+
+- `ci.yml`：push・PR時に`check` → `typecheck` → `test` → `build`を実行する
+- `deploy.yml`：`ci.yml`がmainブランチで成功した後に`workflow_run`で起動し、D1マイグレーション適用と`wrangler deploy`を自動で行う。forkからのPRでの誤発火を防ぐため`head_repository.full_name`を確認する
