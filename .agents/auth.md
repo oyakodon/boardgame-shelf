@@ -15,6 +15,15 @@ Discordのアクセストークン/リフレッシュトークンは保存しな
 
 サーバーを抜けたメンバーのセッションは、最長でセッション有効期限まで生き残る。即時に締め出したいときは管理者が`sessions`から該当行を削除する(専用の管理UIは用意しない。D1コンソール/SQLでの操作を想定)。
 
+### ログイン後の元URL復帰
+
+未ログインで`/games/:id`等を直接開いた場合、ログイン後に元のURLへ戻す(`src/client/routes/RequireAuth.tsx`)。
+
+1. `RequireAuth`が未ログインを検知したら、`sessionStorage`の`postLoginRedirect`キーに現在のパス+クエリ文字列を保存し、`/login`へ遷移する
+2. ログイン成功後、`RequireAuth`が認証済みになったタイミングで`postLoginRedirect`を読み、値があれば削除してからそこへ遷移する
+
+Discord OAuth2は別オリジンを経由するフルページ遷移になるため、React Routerのnavigation stateではなく`sessionStorage`を使う。
+
 ## セッション
 
 ランダムな32バイトの値をbase64urlで符号化してCookieに入れ、D1にはそのSHA-256ハッシュだけを保存する(`sessions.id_hash`)。
