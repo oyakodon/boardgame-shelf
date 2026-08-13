@@ -6,20 +6,21 @@
 
 対象は主にサーバー側の純粋ロジックと、DB/R2を絡めた統合的な挙動。
 
-- 人数絞り込みの判定(`min_players <= N AND (max_players IS NULL OR max_players >= N)`。`max_players`未入力=上限なし)
-- セッションのハッシュ化と検証ロジック
-- 所有者/adminの認可判定(自分の登録のみ編集可、adminは全件可)
+- セッションのハッシュ化と検証ロジック、セッション期限切れ・自動延長
+- 所有者/登録者/adminの認可判定
 - 論理削除後にゲーム一覧へ出てこないこと
-- 写真の枚数上限(5枚)とサイズ上限(2MB)のバリデーション
+- 写真の枚数上限とサイズ上限のバリデーション
 - タグの新規作成と付与、同名タグの再利用
 
-Discord側とのやり取り(トークン交換、guilds/membersの呼び出し、通知Webhookの送信)は`fetch`をモックして、成功/404(未参加)/エラー時の分岐を検証する。通知の送信失敗がゲーム登録のレスポンスに影響しないことも確認する。
+Discord側とのやり取り(トークン交換、guilds/membersの呼び出し)は`fetch`をモックして、成功/404(未参加)/エラー時の分岐を検証する。
 
-フロント(React)の自動テストは当面未整備の想定。画面数が増えて壊れやすくなったら`@testing-library/react`の導入を検討する。
+人数絞り込みの判定(条件式は`.agents/data-model.md`参照)はサーバー側ではなくクライアント側の純粋ロジック(`src/client/game-filter.ts`)であり、`src/client/*.test.ts`(`bgg`/`bga`/`game-filter`/`game-form`/`game-format`)として検証する。`vitest.config.ts`に`test.include`の指定が無いため、これらのクライアント側テストもサーバー側と同じ`cloudflareTest`プール(Miniflare上)で実行されている。純粋関数のみを対象にしている今は問題ないが、DOMやReactコンポーネントのテストを書く場合は`projects`でプールを分ける必要がある。Reactコンポーネント自体のテストは当面未整備の想定で、`@testing-library/react`の導入は画面数が増えて壊れやすくなったら検討する。
 
 ```bash
 npm test
 ```
+
+`npm test`は`node scripts/ensure-wrangler-config.mjs && vitest run`を実行する。`vitest.config.ts`が`wrangler.jsonc`の存在を前提とするため、`vitest`を直接叩く前に必ず`wrangler.jsonc`を生成する連結スクリプトにしてある(`wrangler.jsonc`が既に存在すれば`ensure-wrangler-config.mjs`は何もしない)。
 
 ## 手動検証(実装時に整備)
 
@@ -27,9 +28,10 @@ npm test
 
 ```bash
 npm install
-npm run build     # vite build (クライアント)
-npx wrangler dev   # ローカルでWorker起動。--local でD1/R2もローカルエミュレーション
+npm run dev:worker   # vite build && wrangler dev。ビルド済みクライアント+APIを1プロセスで配信
 ```
+
+クライアント側のみHMRしながら見た目を素早く確認したい場合は`npm run dev`(`vite`のみ)を使うが、`/api/*`等へのプロキシは無いためログインを伴う画面は動かない(`.agents/architecture.md`参照)。
 
 ### 2. API直叩き
 
@@ -51,4 +53,7 @@ Playwrightは依存には含めず、検証用のスクラッチディレクト�
 
 ## CI
 
-GitHub Actionsで`check` → `typecheck` → `test` → `build`の構成にする。`wrangler deploy`の自動化は今回のスコープに含めない(`.agents/architecture.md`の明示的な決定事項を参照)。
+GitHub Actionsは`ci.yml`と`deploy.yml`の2ワークフローに分かれる。
+
+- `ci.yml`：push・PR時に`check` → `typecheck` → `test` → `build`を実行する
+- `deploy.yml`：`ci.yml`がmainブランチへの**push**を起点として成功した後に`workflow_run`で起動し、D1マイグレーション適用と`wrangler deploy`を自動で行う。forkからのPRでの誤発火を防ぐため、`workflow_run`イベントが`push`由来であることと`head_repository.full_name`の両方を確認する(詳細は`.agents/operations.md`)
