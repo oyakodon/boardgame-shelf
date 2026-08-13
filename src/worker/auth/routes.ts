@@ -56,11 +56,9 @@ export async function callback(c: AppContext) {
     return c.json({ error: "invalid oauth state" }, 400);
   }
 
-  let accessToken: string;
-  let isMember: boolean;
   let discordUser: Awaited<ReturnType<typeof fetchCurrentUser>>;
   try {
-    accessToken = await exchangeCodeForToken({
+    const accessToken = await exchangeCodeForToken({
       clientId: c.env.DISCORD_CLIENT_ID,
       clientSecret: c.env.DISCORD_CLIENT_SECRET,
       redirectUri: redirectUri(c),
@@ -68,7 +66,10 @@ export async function callback(c: AppContext) {
       codeVerifier: saved.codeVerifier,
     });
 
-    isMember = await isGuildMember(accessToken, c.env.DISCORD_GUILD_ID);
+    const isMember = await isGuildMember(accessToken, c.env.DISCORD_GUILD_ID);
+    if (!isMember) {
+      return c.json({ error: "not a guild member" }, 403);
+    }
     discordUser = await fetchCurrentUser(accessToken);
   } catch (err) {
     if (err instanceof DiscordApiError) {
@@ -78,9 +79,6 @@ export async function callback(c: AppContext) {
     throw err;
   }
 
-  if (!isMember) {
-    return c.json({ error: "not a guild member" }, 403);
-  }
   const adminIds = c.env.ADMIN_DISCORD_IDS.split(",")
     .map((id) => id.trim())
     .filter(Boolean);
