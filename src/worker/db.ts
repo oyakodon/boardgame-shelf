@@ -265,9 +265,9 @@ export async function updateGame(
   patch: UpdateGameRequest,
   now: number,
 ): Promise<Game | null> {
-  const entries = Object.entries(patch).filter(([, value]) => value !== undefined) as Array<
-    [keyof UpdateGameRequest, unknown]
-  >;
+  const entries = Object.entries(patch).filter(
+    ([key, value]) => value !== undefined && key in UPDATABLE_GAME_COLUMNS,
+  ) as Array<[keyof UpdateGameRequest, unknown]>;
   const setClauses = entries.map(([key]) => `${UPDATABLE_GAME_COLUMNS[key]} = ?`);
   const values = entries.map(([, value]) => value);
 
