@@ -23,6 +23,7 @@ export function GameDetailPage() {
   const navigate = useNavigate();
   const [game, setGame] = useState<GameDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [tagError, setTagError] = useState<string | null>(null);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
@@ -250,9 +251,10 @@ export function GameDetailPage() {
               if (!window.confirm(`「${game.title}」を削除しますか？`)) {
                 return;
               }
+              setActionError(null);
               deleteGame(game.id)
                 .then(() => navigate("/"))
-                .catch((err: unknown) => setError(err instanceof Error ? err.message : "削除に失敗しました"));
+                .catch((err: unknown) => setActionError(err instanceof Error ? err.message : "削除に失敗しました"));
             }}
             className="min-h-12 flex-1 rounded border border-red-300 text-red-600 active:bg-red-50"
           >
@@ -260,6 +262,7 @@ export function GameDetailPage() {
           </button>
         </div>
       )}
+      {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
 
       <PhotoViewer
         photos={game.photos}
