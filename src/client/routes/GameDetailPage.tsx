@@ -5,17 +5,7 @@ import { addGameTag, deleteGame, errorMessage, getGame, listTags, removeGameTag 
 import { useAuth } from "../auth-context";
 import { bgaUrl } from "../bga";
 import { PhotoViewer } from "../components/PhotoViewer";
-import { playersLabel } from "../game-format";
-
-function playTimeLabel(game: GameDetail): string | null {
-  if (game.playTimeMin === null && game.playTimeMax === null) {
-    return null;
-  }
-  if (game.playTimeMin !== null && game.playTimeMax !== null && game.playTimeMin !== game.playTimeMax) {
-    return `${game.playTimeMin}〜${game.playTimeMax}分`;
-  }
-  return `${game.playTimeMin ?? game.playTimeMax}分`;
-}
+import { playersLabel, playTimeLabel } from "../game-format";
 
 export function GameDetailPage() {
   const { id } = useParams<{ id: string }>();
