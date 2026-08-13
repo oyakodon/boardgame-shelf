@@ -3,7 +3,7 @@
 D1(SQLite互換)のテーブル定義。時刻はUNIXエポック秒のINTEGERで統一する。
 
 マイグレーションは `wrangler d1 migrations create DB <name>` で作成し、`migrations/NNNN_<name>.sql` に置く。
-初回は `migrations/0001_init.sql` に以下の全テーブルをまとめる。
+以下は`0001_init.sql`から`0003_add_bga_slug.sql`までの全マイグレーション適用後の最終スキーマである(`registered_by_id`は`0002`、`bga_slug`は`0003`で追加した列。`0001_init.sql`自体にはこの2列は無い)。
 
 ```sql
 -- ユーザー。id は Discord のユーザー ID
@@ -31,7 +31,7 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);
 CREATE TABLE games (
   id            TEXT PRIMARY KEY,       -- UUID v4
   owner_id      TEXT NOT NULL REFERENCES users(id),  -- 実際の持ち主
-  registered_by_id TEXT REFERENCES users(id),        -- 入力した人。代理登録でなければ owner_id と同じ
+  registered_by_id TEXT REFERENCES users(id),        -- 入力した人。代理登録でなければ owner_id と同じ(0002で追加)
   title         TEXT NOT NULL,
   min_players   INTEGER,
   max_players   INTEGER,
@@ -39,7 +39,7 @@ CREATE TABLE games (
   play_time_max INTEGER,
   note          TEXT,                   -- 所有者のコメント。「重ゲー」「拡張入り」など
   bgg_id        INTEGER,                -- 手入力の補助情報。任意
-  bga_slug      TEXT,                   -- BGA(ボードゲームアリーナ)のゲームスラッグ。任意
+  bga_slug      TEXT,                   -- BGA(ボードゲームアリーナ)のゲームスラッグ。任意(0003で追加)
   status        TEXT NOT NULL DEFAULT 'available',  -- 'available' | 'retired'
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL,
