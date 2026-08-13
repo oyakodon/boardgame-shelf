@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { GameDetail, Tag } from "../../shared/types";
-import { addGameTag, deleteGame, getGame, listTags, removeGameTag } from "../api";
+import { addGameTag, deleteGame, errorMessage, getGame, listTags, removeGameTag } from "../api";
 import { useAuth } from "../auth-context";
 import { bgaUrl } from "../bga";
 import { PhotoViewer } from "../components/PhotoViewer";
@@ -36,7 +36,7 @@ export function GameDetailPage() {
     setActionError(null);
     getGame(id)
       .then(setGame)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "取得に失敗しました"));
+      .catch((err: unknown) => setError(errorMessage(err, "取得に失敗しました")));
   }, [id]);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export function GameDetailPage() {
       setGame((prev) => (prev ? { ...prev, tags, tagNames: tags.map((t) => t.name) } : prev));
       setTagInput("");
     } catch (err) {
-      setTagError(err instanceof Error ? err.message : "タグの追加に失敗しました");
+      setTagError(errorMessage(err, "タグの追加に失敗しました"));
     }
   }
 
@@ -104,7 +104,7 @@ export function GameDetailPage() {
           return { ...prev, tags, tagNames: tags.map((t) => t.name) };
         });
       })
-      .catch((err: unknown) => setTagError(err instanceof Error ? err.message : "タグの削除に失敗しました"));
+      .catch((err: unknown) => setTagError(errorMessage(err, "タグの削除に失敗しました")));
   }
 
   return (
@@ -261,7 +261,7 @@ export function GameDetailPage() {
               setActionError(null);
               deleteGame(game.id)
                 .then(() => navigate("/"))
-                .catch((err: unknown) => setActionError(err instanceof Error ? err.message : "削除に失敗しました"));
+                .catch((err: unknown) => setActionError(errorMessage(err, "削除に失敗しました")));
             }}
             className="min-h-12 flex-1 rounded border border-red-300 text-red-600 active:bg-red-50"
           >

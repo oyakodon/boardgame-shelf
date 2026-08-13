@@ -1,6 +1,7 @@
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import { MAX_PHOTO_BYTES, MAX_PHOTOS_PER_GAME } from "../../shared/constants";
 import type { GamePhoto } from "../../shared/types";
+import { errorMessage } from "../api";
 import { resizeImageToJpeg } from "../image-resize";
 
 // 未アップロードの写真。保存時にまとめてアップロードする
@@ -72,7 +73,7 @@ export function PhotoPicker({ value, onChange }: PhotoPickerProps) {
       };
       onChange((prev) => ({ ...prev, added: [...prev.added, pending] }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
+      setError(errorMessage(err, "画像の読み込みに失敗しました"));
     } finally {
       setProcessing(false);
     }

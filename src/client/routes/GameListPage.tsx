@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { Game } from "../../shared/types";
-import { listGames } from "../api";
+import { errorMessage, listGames } from "../api";
 import { filterGames, type GameFilterCriteria } from "../game-filter";
 import { playersLabel } from "../game-format";
 
@@ -32,7 +32,7 @@ export function GameListPage() {
   useEffect(() => {
     listGames()
       .then(setGames)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "一覧の取得に失敗しました"));
+      .catch((err: unknown) => setError(errorMessage(err, "一覧の取得に失敗しました")));
   }, []);
 
   const criteria = useMemo(() => parseCriteria(searchParams), [searchParams]);
