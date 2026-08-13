@@ -155,7 +155,11 @@ export function GameListPage() {
         )}
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
       {!error && !games && <p className="text-gray-600">読み込み中...</p>}
       {games && games.length === 0 && <p className="text-gray-600">まだゲームが登録されていません。</p>}
       {games && games.length > 0 && filtered.length === 0 && (

@@ -249,7 +249,11 @@ export function GameFormPage({ mode }: { mode: Mode }) {
             ))}
           </select>
           <p className="mt-1 text-xs text-gray-500">他の人の持ち物を代理で登録するときは選び直してください</p>
-          {membersError && <p className="mt-1 text-xs text-red-600">{membersError}(自分のみ選択できます)</p>}
+          {membersError && (
+            <p role="alert" className="mt-1 text-xs text-red-600">
+              {membersError}(自分のみ選択できます)
+            </p>
+          )}
         </div>
 
         <div className="flex gap-3">
@@ -357,7 +361,11 @@ export function GameFormPage({ mode }: { mode: Mode }) {
           />
         </div>
 
-        {error && <p className="text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="text-red-600">
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"

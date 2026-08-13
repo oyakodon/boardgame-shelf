@@ -48,7 +48,9 @@ export function GameDetailPage() {
   if (error) {
     return (
       <main className="mx-auto max-w-2xl p-4">
-        <p className="text-red-600">{error}</p>
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
       </main>
     );
   }
@@ -169,7 +171,11 @@ export function GameDetailPage() {
           </button>
         </form>
       </div>
-      {tagError && <p className="mt-1 text-sm text-red-600">{tagError}</p>}
+      {tagError && (
+        <p role="alert" className="mt-1 text-sm text-red-600">
+          {tagError}
+        </p>
+      )}
 
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex gap-2">
@@ -263,7 +269,11 @@ export function GameDetailPage() {
           </button>
         </div>
       )}
-      {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
+      {actionError && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          {actionError}
+        </p>
+      )}
 
       <PhotoViewer
         photos={game.photos}
