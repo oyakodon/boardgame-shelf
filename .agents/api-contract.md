@@ -45,6 +45,8 @@ API(`/api`配下)と認証系(`/auth`配下)はJSONで受け答えする。画�
 
 配信は`GET /img/{r2_key}`をWorkerが受け、R2から読んで返す。キーにはUUIDが入っていて内容が変わらないため、`Cache-Control: public, max-age=31536000, immutable`を付ける。R2バケットは直接公開せず、Worker経由に限定する。
 
+`/img/*`は他の全ルートと異なり`requireAuth`を通さない、意図的な認証不要のcapability URLである。R2キー(`games/{game_id}/{uuid}.jpg`)は推測困難なため、実害は「URLを知っていれば誰でも見られる」範囲に留まる。
+
 ## エラー規約
 
 - 認証必須のエンドポイントでセッションが無効：`401 {"error": "..."}`
