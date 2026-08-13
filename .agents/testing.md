@@ -6,16 +6,15 @@
 
 対象は主にサーバー側の純粋ロジックと、DB/R2を絡めた統合的な挙動。
 
-- 人数絞り込みの判定(`min_players <= N AND (max_players IS NULL OR max_players >= N)`。`max_players`未入力=上限なし)
-- セッションのハッシュ化と検証ロジック
-- 所有者/adminの認可判定(自分の登録のみ編集可、adminは全件可)
+- セッションのハッシュ化と検証ロジック、セッション期限切れ・自動延長
+- 所有者/登録者/adminの認可判定
 - 論理削除後にゲーム一覧へ出てこないこと
-- 写真の枚数上限(5枚)とサイズ上限(2MB)のバリデーション
+- 写真の枚数上限とサイズ上限のバリデーション
 - タグの新規作成と付与、同名タグの再利用
 
 Discord側とのやり取り(トークン交換、guilds/membersの呼び出し)は`fetch`をモックして、成功/404(未参加)/エラー時の分岐を検証する。
 
-フロント(React)の自動テストは当面未整備の想定。画面数が増えて壊れやすくなったら`@testing-library/react`の導入を検討する。
+人数絞り込みの判定(`min_players <= N AND (max_players IS NULL OR max_players >= N)`。`max_players`未入力=上限なし)はサーバー側ではなくクライアント側の純粋ロジック(`src/client/game-filter.ts`)であり、`src/client/*.test.ts`(`bgg`/`bga`/`game-filter`/`game-form`/`game-format`)として検証する。`vitest.config.ts`に`test.include`の指定が無いため、これらのクライアント側テストもサーバー側と同じ`cloudflareTest`プール(Miniflare上)で実行されている。純粋関数のみを対象にしている今は問題ないが、DOMやReactコンポーネントのテストを書く場合は`projects`でプールを分ける必要がある。Reactコンポーネント自体のテストは当面未整備の想定で、`@testing-library/react`の導入は画面数が増えて壊れやすくなったら検討する。
 
 ```bash
 npm test

@@ -98,7 +98,7 @@ biome.json
 
 - クライアントは `vite build` で静的アセットを出力し、`wrangler.jsonc` の `assets` にディレクトリを指定する
 - Worker本体(`src/worker/index.ts`)はビルド不要。`wrangler dev`/`wrangler deploy` が内部でesbuildバンドルするため、別途のビルドステップは要らない
-- 開発時は `wrangler dev` 1プロセスで完結させる方針とする(Vite devサーバーとの二重起動は行わず、`wrangler dev` の `assets` 機能でクライアントも配信する想定)。ホットリロードの体験が悪ければ、Vite devサーバー+プロキシ構成に見直す
+- 開発用スクリプトは2つある。`npm run dev`(`vite`のみ)はクライアントのHMRは効くがAPIへのプロキシが無いため`/api/*`等は解決しない。`npm run dev:worker`(`vite build && wrangler dev`)は`wrangler dev`の`assets`機能でビルド済みクライアントとAPIを1プロセスで配信するが、クライアントの変更は`vite build`をやり直すまで反映されない(HMR無し)
 - `wrangler.jsonc` に `routes` を設定すると、`dev.host` を明示しない限り `wrangler dev` はその `routes` の最初のホスト名をローカル開発時のHostとしてシミュレートする(Discord OAuth2の`redirect_uri`がローカルでも本番ドメインになってしまう不具合の原因になった)。そのため `dev.host` に `"localhost:8787"` を明示している。ポートを省略すると補完されず`redirect_uri`からポート番号が抜け落ちるため、ポートまで含めて書く
 - 状態管理はログイン中ユーザー情報のみ軽量なReact Contextで共有し、それ以外は各画面のローカルstateとする。Redux等のグローバル状態管理ライブラリは規模的に不要と判断し導入しない
 - フォームはreact-hook-form等を使わず、controlled componentsで素朴に書く。入力項目数が少ないため

@@ -19,7 +19,7 @@ Discordのアクセストークン/リフレッシュトークンは保存しな
 
 ランダムな32バイトの値をbase64urlで符号化してCookieに入れ、D1にはそのSHA-256ハッシュだけを保存する(`sessions.id_hash`)。
 
-- Cookie名：`__Host-session`
+- Cookie名：`session`。本番(https)では`__Host-`プレフィックスが付き実質`__Host-session`になる
 - 属性：`HttpOnly; Secure; SameSite=Lax; Path=/`
 - 有効期限：30日。アクセスのたびに残り7日を切っていれば延長する
 
@@ -37,7 +37,7 @@ CSRF対策はSameSite=Laxに加えて、更新系リクエスト(POST/PATCH/DELE
 初期の管理者は環境変数`ADMIN_DISCORD_IDS`(カンマ区切り)で指定する。初回ログイン時の`users`行作成時にのみ`role`へ反映され、以後のログインでは上書きしない(`ADMIN_DISCORD_IDS`を後から変更しても既存ユーザーの`role`には影響しない)。
 以後の昇格や降格は管理者がD1を直接操作する想定で、管理UIは用意しない。
 
-認可チェックは各APIハンドラでリクエストごとに行う(ミドルウェアで`req.user`を注入し、所有者判定とadmin判定はルートハンドラ側で行う方針)。
+認可チェックは各APIハンドラでリクエストごとに行う(ミドルウェアがHonoの`c.set("user", ...)`でユーザーを注入し、ルートハンドラ側で`c.get("user")`を使って所有者判定とadmin判定を行う方針)。
 
 ## 管理者用の固定トークン認証(curl用)
 
