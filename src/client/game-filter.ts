@@ -14,12 +14,15 @@ export const EMPTY_FILTER: GameFilterCriteria = {
   tags: [],
 };
 
+// この人数以上を選ぶと「N+」(N人以上で遊べるか)の判定になる。それ未満は「ちょうどN人で遊べるか」の判定
+export const MAX_PLAYER_FILTER = 8;
+
 export function filterGames(games: Game[], criteria: GameFilterCriteria): Game[] {
   const keyword = criteria.keyword.trim().toLowerCase();
 
   return games.filter((game) => {
     if (criteria.players !== null) {
-      if (game.minPlayers > criteria.players) {
+      if (criteria.players < MAX_PLAYER_FILTER && game.minPlayers > criteria.players) {
         return false;
       }
       if (game.maxPlayers !== null && game.maxPlayers < criteria.players) {

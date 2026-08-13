@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Game } from "../shared/types";
-import { EMPTY_FILTER, filterGames } from "./game-filter";
+import { EMPTY_FILTER, filterGames, MAX_PLAYER_FILTER } from "./game-filter";
 
 function makeGame(overrides: Partial<Game> = {}): Game {
   return {
@@ -44,6 +44,17 @@ describe("filterGames", () => {
     const games = [makeGame({ minPlayers: 2, maxPlayers: null })];
     expect(filterGames(games, { ...EMPTY_FILTER, players: 8 })).toHaveLength(1);
     expect(filterGames(games, { ...EMPTY_FILTER, players: 1 })).toHaveLength(0);
+  });
+
+  it("treats the max player option as 'N or more' rather than an exact match", () => {
+    const games = [makeGame({ minPlayers: 9, maxPlayers: 12 })];
+    expect(filterGames(games, { ...EMPTY_FILTER, players: MAX_PLAYER_FILTER })).toHaveLength(1);
+    expect(filterGames(games, { ...EMPTY_FILTER, players: MAX_PLAYER_FILTER - 1 })).toHaveLength(0);
+  });
+
+  it("still excludes games whose maxPlayers is below the max player option", () => {
+    const games = [makeGame({ minPlayers: 2, maxPlayers: 6 })];
+    expect(filterGames(games, { ...EMPTY_FILTER, players: MAX_PLAYER_FILTER })).toHaveLength(0);
   });
 
   it("filters by keyword matching title or note, case-insensitively", () => {
