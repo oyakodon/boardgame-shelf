@@ -82,7 +82,7 @@ CREATE INDEX idx_game_tags_tag ON game_tags(tag_id);
 ## 設計判断
 
 **人数の絞り込み**：「N人で遊べる」は`min_players <= N AND (max_players IS NULL OR max_players >= N)`で判定する。
-`max_players`が`NULL`は「上限なし(最小人数以上なら何人でも可)」を表す。`min_players`は登録フォームで必須入力にするが、`max_players`は任意とする(`.agents/architecture.md` の「フロントエンド」参照)。
+`max_players`が`NULL`は「上限なし(最小人数以上なら何人でも可)」を表す。`min_players`は登録フォームで必須入力にするが、`max_players`は任意とする(`.agents/client.md` 参照)。
 
 **削除**：`games`は`deleted_at`を立てる論理削除にする。誤操作からの復旧を管理者がSQLで行えるようにするためである。
 R2の実体は、論理削除から一定期間後にまとめて手動で消す運用でよい(自動化はしない)。
@@ -97,3 +97,7 @@ R2の実体は、論理削除から一定期間後にまとめて手動で消す
 **セッション**：`sessions.id_hash`にはCookieに入れる値そのものではなく、そのSHA-256ハッシュを保存する。DBが読まれてもセッションを復元できないようにするためである。詳細は`.agents/auth.md`。
 
 **タグ**：`tags`は候補リストを持たず、メンバーが自由に作成する。`name`をUNIQUEにして表記の重複だけは防ぐが、表記揺れ(「重ゲー」「重量級」など)の統一は運用に委ねる。
+
+**写真の保存**：アップロードはJPEGのみ受け付け、`Content-Type`ヘッダとファイル先頭のマジックバイト(`FF D8 FF`)の両方を確認する(どちらか一方の詐称に備えた二重チェック)。`r2_key`は`games/{game_id}/{uuid}.jpg`の形式。`sort_order`は追加のたびに既存最大値+1を採番し、`0`番目をサムネイルに使う。`width`/`height`はクライアント側で縮小済みの画像をそのまま保存するだけなので、現状は取得・保存しておらず常に`NULL`。
+
+**タグ名の制約**：30文字以内、trim後に空文字は不可、制御文字(`\x00`-`\x1f`、`\x7f`)は拒否する。バリデーションは`src/worker/routes/tags.ts`。
