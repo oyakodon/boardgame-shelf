@@ -110,4 +110,4 @@ biome.json
 - 写真は1ゲームあたり5枚まで、1枚あたり2MBまでとする(`src/shared/constants.ts`が正。他ドキュメントはこの節を参照する)
 - 表示名はDiscordの名前をそのまま使う。サイト内で個別に変更する機能は持たず、ログインのたびにDiscord側の最新の名前で上書きする
 - タグ(`tags`と中間テーブル`game_tags`)は候補リストや承認フローを設けず、メンバーなら誰でも新規作成し任意のゲームに付与できる自由記述とする
-- 公開ドメインは `oykdn.com` のサブドメイン `game.oykdn.com` を使う。`wrangler.jsonc`の`routes`に`custom_domain: true`で設定し、`wrangler deploy`時にCloudflare側のCustom Domainとして自動アタッチされる
+- 公開ドメインは `servalroom.com` のサブドメイン `game.servalroom.com` を使う。`wrangler.jsonc`の`routes`に`custom_domain: true`で設定し、`wrangler deploy`時にCloudflare側のCustom Domainとして自動アタッチされる。旧ドメイン`game.oykdn.com`はCloudflareのRedirect Rulesで`game.servalroom.com`へ301リダイレクトする(Worker側の設定ではないためこのリポジトリでは管理しない)
