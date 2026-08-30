@@ -127,6 +127,33 @@ describe("POST /discord/interactions", () => {
     expect(await res.json()).toEqual({ error: "forbidden" });
   });
 
+  it("returns 400 when an application command is not shelf", async () => {
+    const { privateKey, publicKeyHex } = await generateKeyPair();
+    bindings.DISCORD_PUBLIC_KEY = publicKeyHex;
+
+    const res = await postInteraction(privateKey, {
+      type: 2,
+      guild_id: TEST_GUILD_ID,
+      data: { name: "other-command" },
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "unsupported command" });
+  });
+
+  it("returns 400 when an application command has no data", async () => {
+    const { privateKey, publicKeyHex } = await generateKeyPair();
+    bindings.DISCORD_PUBLIC_KEY = publicKeyHex;
+
+    const res = await postInteraction(privateKey, {
+      type: 2,
+      guild_id: TEST_GUILD_ID,
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "unsupported command" });
+  });
+
   it("recommends the single game matching the requested player count as an embed", async () => {
     const { privateKey, publicKeyHex } = await generateKeyPair();
     bindings.DISCORD_PUBLIC_KEY = publicKeyHex;
@@ -149,9 +176,11 @@ describe("POST /discord/interactions", () => {
           fields: Array<{ name: string; value: string; inline?: boolean }>;
           footer?: unknown;
         }>;
+        allowed_mentions: { parse: string[] };
       };
     };
     expect(body.type).toBe(4);
+    expect(body.data.allowed_mentions).toEqual({ parse: [] });
     const [embed] = body.data.embeds;
     expect(embed.title).toBe("インタラクションテスト201");
     expect(embed.url).toBe(`${ORIGIN}/games/${game.id}`);

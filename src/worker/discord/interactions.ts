@@ -134,8 +134,14 @@ export async function handleDiscordInteraction(c: AppContext) {
     if (interaction.guild_id !== c.env.DISCORD_GUILD_ID) {
       return c.json({ error: "forbidden" }, 403);
     }
+    if (interaction.data?.name !== "shelf") {
+      return c.json({ error: "unsupported command" }, 400);
+    }
     const data = await buildRecommendationResponse(c, interaction.data?.options);
-    return c.json({ type: RESPONSE_TYPE_CHANNEL_MESSAGE_WITH_SOURCE, data });
+    return c.json({
+      type: RESPONSE_TYPE_CHANNEL_MESSAGE_WITH_SOURCE,
+      data: { ...data, allowed_mentions: { parse: [] } },
+    });
   }
 
   return c.json({ error: "unsupported interaction type" }, 400);
