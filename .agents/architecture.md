@@ -53,6 +53,10 @@ src/
       img.ts
       tags.ts
       me.ts
+    discord/
+      verify.ts               Interactions署名(Ed25519)検証
+      interactions.ts          POST /discord/interactionsハンドラ(PING応答、/shelfのレコメンド)
+      recommend.ts              人数・online/realでのゲーム絞り込みとランダム選出(純粋関数)
     db/                     D1クエリのラッパー(テーブル単位に分割)
       users.ts / sessions.ts / games.ts / photos.ts / tags.ts
       index.ts               上記の再エクスポート(呼び出し側は "../db" のまま参照する)

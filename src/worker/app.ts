@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { requireAuth, requireSameOrigin, type Variables } from "./auth/middleware";
 import { callback, login, logout } from "./auth/routes";
+import { handleDiscordInteraction } from "./discord/interactions";
 import type { Bindings } from "./env";
 import { createGame, deleteGame, getGame, listGames, listUsers, patchGame } from "./routes/games";
 import { serveImage } from "./routes/img";
@@ -38,8 +39,11 @@ app.get("/api/tags", requireAuth, listTags);
 app.post("/api/games/:id/tags", requireAuth, requireSameOrigin, addTagToGame);
 app.delete("/api/games/:id/tags/:tagId", requireAuth, requireSameOrigin, removeTagFromGame);
 
+app.post("/discord/interactions", handleDiscordInteraction);
+
 app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 app.all("/auth/*", (c) => c.json({ error: "not found" }, 404));
+app.all("/discord/*", (c) => c.json({ error: "not found" }, 404));
 
 app.get("/img/*", serveImage);
 
