@@ -7,4 +7,5 @@ export type Bindings = {
   ADMIN_DISCORD_IDS: string;
   DISCORD_CLIENT_SECRET: string;
   ADMIN_API_TOKEN: string;
+  DISCORD_PUBLIC_KEY: string;
 };

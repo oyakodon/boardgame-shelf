@@ -11,7 +11,8 @@
   "vars": {
     "DISCORD_CLIENT_ID": "...",
     "DISCORD_GUILD_ID": "...",
-    "ADMIN_DISCORD_IDS": "111...,222..."
+    "ADMIN_DISCORD_IDS": "111...,222...",
+    "DISCORD_PUBLIC_KEY": "..."
   }
 }
 ```
