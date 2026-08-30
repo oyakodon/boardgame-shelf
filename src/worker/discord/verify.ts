@@ -2,6 +2,10 @@
 // https://discord.com/developers/docs/interactions/receiving-and-responding#security-and-authorization
 
 function hexToBytes(hex: string): Uint8Array {
+  if (hex.length === 0 || hex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(hex)) {
+    throw new Error("invalid hexadecimal input");
+  }
+
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
     bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
